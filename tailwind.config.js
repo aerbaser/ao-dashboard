@@ -3,8 +3,89 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      // Design tokens from Leo — ~/.openclaw/workspace-leo/projects/ao-dashboard/design-tokens.json
-      // Архимед: import and apply in src/index.css
+      colors: {
+        bg: {
+          void:     '#0C0B0A',
+          base:     '#111110',
+          surface:  '#1A1916',
+          elevated: '#222120',
+          overlay:  '#2A2927',
+          hover:    '#302F2D',
+        },
+        border: {
+          subtle:  'rgba(255,255,255,0.07)',
+          default: 'rgba(255,255,255,0.10)',
+          strong:  'rgba(255,255,255,0.16)',
+        },
+        text: {
+          primary:   '#F2F0ED',
+          secondary: '#A09D99',
+          tertiary:  '#6B6865',
+          disabled:  '#403E3C',
+          inverse:   '#0C0B0A',
+        },
+        accent: {
+          amber:          '#F5A623',
+          'amber-dim':    '#7A5310',
+          'amber-subtle': 'rgba(245,166,35,0.12)',
+          emerald:          '#22C55E',
+          'emerald-dim':    '#14532D',
+          'emerald-subtle': 'rgba(34,197,94,0.12)',
+          red:          '#EF4444',
+          'red-dim':    '#7F1D1D',
+          'red-subtle': 'rgba(239,68,68,0.12)',
+          blue:          '#60A5FA',
+          'blue-dim':    '#1E3A5F',
+          'blue-subtle': 'rgba(96,165,250,0.12)',
+          purple:          '#A78BFA',
+          'purple-dim':    '#4C1D95',
+          'purple-subtle': 'rgba(167,139,250,0.12)',
+        },
+        status: {
+          active:   '#F5A623',
+          idle:     '#A09D99',
+          healthy:  '#22C55E',
+          warning:  '#FBBF24',
+          critical: '#EF4444',
+          dead:     '#7F1D1D',
+          info:     '#60A5FA',
+        },
+      },
+      fontFamily: {
+        sans: ["'Inter'", '-apple-system', 'sans-serif'],
+        mono: ["'Geist Mono'", "'JetBrains Mono'", "'Fira Code'", 'monospace'],
+        display: ["'Inter'", 'sans-serif'],
+      },
+      keyframes: {
+        pulse: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.5' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideInRight: {
+          '0%': { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
+        slideOutRight: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        'pulse-active': 'pulse 2.5s ease-in-out infinite',
+        'pulse-critical': 'pulse 1.2s ease-in-out infinite',
+        skeleton: 'shimmer 1.8s linear infinite',
+        'fade-in': 'fadeIn 150ms ease',
+        'slide-in-right': 'slideInRight 200ms cubic-bezier(0.16,1,0.3,1)',
+        'slide-out-right': 'slideOutRight 200ms cubic-bezier(0.16,1,0.3,1)',
+      },
     },
   },
   plugins: [],

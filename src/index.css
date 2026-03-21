@@ -1,6 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens applied by Архимед based on:
-   ~/.openclaw/workspace-leo/projects/ao-dashboard/design-tokens.json */
+@layer base {
+  body {
+    @apply bg-bg-base text-text-primary font-sans;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  * {
+    @apply border-border-default;
+  }
+}
+
+@layer components {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.10) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.10);
+    border-radius: 3px;
+  }
+}

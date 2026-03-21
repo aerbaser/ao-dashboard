@@ -11,6 +11,9 @@ import logsRouter from './api/logs.js'
 import configRouter from './api/config.js'
 import memoryRouter from './api/memory.js'
 import skillsRouter from './api/skills.js'
+import servicesRouter from './api/services.js'
+import cronRouter from './api/cron.js'
+import vitalsRouter from './api/vitals.js'
 import { getGlobalStatus } from './lib/status.js'
 import { startVitalsWorker } from './lib/vitals.js'
 
@@ -37,6 +40,9 @@ app.use('/api/status', statusRouter)
 // ── Rate-limits ──────────────────────────────────────────────────────────
 
 app.use('/api/rate-limits', rateLimitsRouter)
+app.use('/api/services', servicesRouter)
+app.use('/api/cron', cronRouter)
+app.use('/api/vitals', vitalsRouter)
 app.use('/api/agents', agentsRouter)
 app.use('/api/logs', logsRouter)
 app.use('/api/config', configRouter)

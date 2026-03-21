@@ -1,4 +1,18 @@
-import type { Task, TaskEvent, TaskDecision, TaskContract, TransitionError, PipelineState, GlobalStatus, TaskListItem } from './types';
+import type {
+  Task,
+  TaskEvent,
+  TaskDecision,
+  TaskContract,
+  TransitionError,
+  PipelineState,
+  GlobalStatus,
+  TaskListItem,
+  ServiceInfo,
+  CronEntry,
+  CronResponse,
+  VitalsResponse,
+  RateLimitsResponse,
+} from './types';
 
 const BASE = '/api';
 
@@ -278,3 +292,41 @@ export function getLogEvents(params?: { agent?: string; task_id?: string; type?:
 // Aliases for backwards-compat with Logs components
 export { getLogEvents as getEvents }
 export type { LogEvent as Event }
+
+// ─── System ─────────────────────────────────────────────────────────────────
+
+export function getServices(): Promise<ServiceInfo[]> {
+  return fetchJson<ServiceInfo[]>('/services')
+}
+
+export function runServiceAction(name: string, action: 'start' | 'stop' | 'restart'): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/services/${encodeURIComponent(name)}/${action}`, {
+    method: 'POST',
+  })
+}
+
+export function getCron(): Promise<CronResponse> {
+  return fetchJson<CronResponse>('/cron')
+}
+
+export function updateCron(entries: CronEntry[]): Promise<CronResponse> {
+  return request<CronResponse>('/cron', {
+    method: 'POST',
+    body: JSON.stringify({ entries }),
+  })
+}
+
+export function getVitalsDetail(): Promise<VitalsResponse> {
+  return fetchJson<VitalsResponse>('/vitals')
+}
+
+export function getRateLimits(): Promise<RateLimitsResponse> {
+  return fetchJson<RateLimitsResponse>('/rate-limits')
+}
+
+export function switchRateLimitProfile(profile: string): Promise<{ ok: boolean; active: string }> {
+  return request<{ ok: boolean; active: string }>('/rate-limits/switch', {
+    method: 'POST',
+    body: JSON.stringify({ profile }),
+  })
+}

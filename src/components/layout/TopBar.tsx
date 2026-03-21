@@ -89,6 +89,19 @@ export default function TopBar({ status }: TopBarProps) {
         </span>
       </button>
 
+      <button
+        onClick={() => navigate('/')}
+        className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors"
+      >
+        <span
+          className={`text-xs ${
+            status && status.failed_tasks > 0 ? 'text-accent-red' : 'text-text-secondary'
+          }`}
+        >
+          Failed {status?.failed_tasks ?? '—'}
+        </span>
+      </button>
+
       <div className="flex-1" />
 
       {/* CPU */}

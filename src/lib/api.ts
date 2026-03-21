@@ -1,4 +1,14 @@
-import type { Task, TaskEvent, TaskDecision, TaskContract, TransitionError, PipelineState, GlobalStatus, TaskListItem } from './types';
+import type {
+  Task,
+  TaskEvent,
+  TaskDecision,
+  TaskContract,
+  TransitionError,
+  PipelineState,
+  GlobalStatus,
+  TaskListItem,
+  RateLimitsApiResponse,
+} from './types';
 
 const BASE = '/api';
 
@@ -22,6 +32,17 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 export function getStatus(): Promise<GlobalStatus> {
   return fetchJson<GlobalStatus>('/status');
+}
+
+export function getRateLimits(): Promise<RateLimitsApiResponse> {
+  return fetchJson<RateLimitsApiResponse>('/rate-limits');
+}
+
+export function switchRateLimitProfile(to: 'yura' | 'dima'): Promise<{ ok: true; active: string }> {
+  return request('/rate-limits/switch', {
+    method: 'POST',
+    body: JSON.stringify({ to }),
+  });
 }
 
 // ─── Response shapes from the backend ──────────────────────────────────────

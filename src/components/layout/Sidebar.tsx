@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
     icon: '⚡',
     badge: (s) => {
       if (!s) return null
-      const count = s.blocked_tasks + s.stuck_tasks
+      const count = s.blocked_tasks + s.stuck_tasks + s.failed_tasks
       return count > 0 ? count : null
     },
     badgeColor: 'red',

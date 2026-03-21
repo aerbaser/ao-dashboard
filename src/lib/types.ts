@@ -6,13 +6,31 @@ export interface GlobalStatus {
   active_tasks: number
   blocked_tasks: number
   stuck_tasks: number
+  failed_tasks: number
   failed_services: number
-  cpu_percent: number | null
-  cpu_temp: number | null
-  claude_usage_percent: number | null
-  codex_usage_percent: number | null
-  timestamp: string
+  cpu_percent: number
+  cpu_temp: number
+  claude_usage_percent: number
+  codex_usage_percent: number
 }
+
+export interface RateLimitProfile {
+  profile: string
+  tokens_used: number
+  tokens_limit: number
+  requests_used: number
+  requests_limit: number
+  reset_at: string
+  model: string
+}
+
+export interface RateLimitFallback {
+  cached: false
+  stale: true
+  profiles: RateLimitProfile[]
+}
+
+export type RateLimitsApiResponse = RateLimitProfile[] | RateLimitFallback
 
 export const PIPELINE_STATES = [
   'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',

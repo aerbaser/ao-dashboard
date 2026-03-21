@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.app.json && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test:server": "node --test server/lib/*.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "typecheck:server": "tsc --noEmit -p tsconfig.server.json",
     "start": "node server/index.js"

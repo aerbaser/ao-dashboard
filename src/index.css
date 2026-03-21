@@ -2,5 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens applied by Архимед based on:
+/* Design tokens applied from:
    ~/.openclaw/workspace-leo/projects/ao-dashboard/design-tokens.json */
+
+/* Layout tokens */
+:root {
+  --sidebar-expanded: 240px;
+  --sidebar-collapsed: 56px;
+  --topbar-height: 48px;
+  --panel-detail-width: 420px;
+  --kanban-column-width: 260px;
+}
+
+body {
+  @apply bg-bg-base text-text-primary;
+}

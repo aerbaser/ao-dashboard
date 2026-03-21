@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens applied by Архимед based on:
+   ~/.openclaw/workspace-leo/projects/ao-dashboard/design-tokens.json */

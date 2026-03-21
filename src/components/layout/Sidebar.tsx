@@ -4,6 +4,7 @@ import type { GlobalStatus } from '../../lib/types'
 
 interface SidebarProps {
   status: GlobalStatus | null
+  onClose?: () => void
 }
 
 const LS_KEY = 'sidebar_collapsed'
@@ -77,7 +78,7 @@ function Badge({ count, color }: { count: number | null; color: 'red' | 'amber' 
   )
 }
 
-export default function Sidebar({ status }: SidebarProps) {
+export default function Sidebar({ status, onClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(LS_KEY) === 'true'
@@ -105,6 +106,7 @@ export default function Sidebar({ status }: SidebarProps) {
             key={item.to}
             to={item.to}
             end={item.to === '/'}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-200 ${
                 isActive

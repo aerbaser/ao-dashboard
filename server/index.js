@@ -62,6 +62,17 @@ app.get('/api/global-status', async (_req, res) => {
   }
 })
 
+// ── Decisions + Events (delegated to logs router — must be before static) ────
+
+app.get('/api/decisions', (req, res) => {
+  req.url = '/decisions' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')
+  logsRouter.handle(req, res, () => res.status(404).json({ error: 'not found' }))
+})
+app.get('/api/events', (req, res) => {
+  req.url = '/events' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')
+  logsRouter.handle(req, res, () => res.status(404).json({ error: 'not found' }))
+})
+
 // ── Static client (prod) ─────────────────────────────────────────────────
 
 app.use(express.static(join(__dirname, '../dist/client')))
@@ -75,14 +86,4 @@ startVitalsWorker(10_000)
 
 app.listen(PORT, () => {
   console.log(`[ao-dashboard] server listening on :${PORT}`)
-})
-
-// ── Decisions + Events (delegated to logs router) ─────────────────────────────
-app.get('/api/decisions', async (req, res) => {
-  req.url = '/decisions' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')
-  logsRouter.handle(req, res, () => res.status(404).json({ error: 'not found' }))
-})
-app.get('/api/events', async (req, res) => {
-  req.url = '/events' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')
-  logsRouter.handle(req, res, () => res.status(404).json({ error: 'not found' }))
 })

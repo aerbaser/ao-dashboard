@@ -64,7 +64,7 @@ router.get('/', async (_req, res) => {
     const profiles = Array.isArray(data.profiles) ? data.profiles : []
     const activeProfile = await readActiveProfile()
 
-    return res.json({ cached: true, stale, profiles: normalizeRateLimitProfiles(profiles, activeProfile) })
+    return res.json({ cached: !stale, stale, profiles: normalizeRateLimitProfiles(profiles, activeProfile) })
   } catch {
     // Never throw 500 — return safe fallback
     return res.json({ cached: false, stale: true, profiles: normalizeRateLimitProfiles([]) })

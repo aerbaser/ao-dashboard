@@ -1,0 +1,36 @@
+{
+  "pr": 20,
+  "issue": 6,
+  "branch": "feat/issue-6",
+  "reviewer": "archimedes",
+  "reviewed_at": "2026-03-21T07:30:00Z",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "severity": "critical",
+      "file": "src/App.tsx",
+      "description": "Overwrites Layout Shell App.tsx with single-route stub (only /agents route, no Sidebar/TopBar). Branch diverged from main before Phase 2 merge. Rebase onto main required — keep main's App.tsx with Outlet layout."
+    },
+    {
+      "severity": "critical",
+      "file": "src/main.tsx",
+      "description": "Overwrites full routing (5 routes) with minimal 1-import version. Rebase + keep main's main.tsx."
+    },
+    {
+      "severity": "major",
+      "file": "tailwind.config.js",
+      "description": "Re-adds all Leo tokens already present in main (from PR #12). Merge conflict inevitable. After rebase: keep main's tailwind.config.js, only add new token #4C1D95 (purple-dim)."
+    },
+    {
+      "severity": "minor",
+      "file": "src/pages/Agents.tsx",
+      "description": "Named Agents.tsx but stub in main is AgentsPage.tsx. After rebase: populate AgentsPage.tsx instead, remove Agents.tsx."
+    }
+  ],
+  "positive": [
+    "AgentCard uses design tokens correctly (bg-status-active, ring-status-active/30, animate-pulse-active)",
+    "server/api/agents.js wraps CLI tools (sessions-send.js) — correct architecture",
+    "AgentDetail 5-tab panel fully implemented with MailboxViewer"
+  ],
+  "action": "Rebase onto main, resolve conflicts keeping main layout files, populate AgentsPage.tsx stub"
+}

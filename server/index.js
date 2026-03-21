@@ -5,6 +5,9 @@ import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 import tasksRouter from './api/tasks.js'
 import statusRouter from './api/status.js'
+import rateLimitsRouter from './api/rate-limits.js'
+import { getGlobalStatus } from './lib/status.js'
+import { startVitalsWorker } from './lib/vitals.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -12,20 +15,45 @@ const PORT = process.env.PORT ?? 3333
 
 app.use(express.json())
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ── Health ───────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ao-dashboard', ts: new Date().toISOString() })
 })
 
+// ── Tasks ────────────────────────────────────────────────────────────────
+
 app.use('/api/tasks', tasksRouter)
+
+// ── Legacy status (tasks-based) ──────────────────────────────────────────
+
 app.use('/api/status', statusRouter)
 
-// Static client (prod)
+// ── Rate-limits ──────────────────────────────────────────────────────────
+
+app.use('/api/rate-limits', rateLimitsRouter)
+
+// ── Global status aggregator (TTL-cached, <200ms target) ─────────────────
+
+app.get('/api/global-status', async (_req, res) => {
+  try {
+    const status = await getGlobalStatus()
+    res.json(status)
+  } catch (err) {
+    res.status(500).json({ error: 'Status aggregation failed', detail: String(err) })
+  }
+})
+
+// ── Static client (prod) ─────────────────────────────────────────────────
+
 app.use(express.static(join(__dirname, '../dist/client')))
 app.get('*', (_req, res) => {
   res.sendFile(join(__dirname, '../dist/client/index.html'))
 })
+
+// ── Start ────────────────────────────────────────────────────────────────
+
+startVitalsWorker(10_000)
 
 app.listen(PORT, () => {
   console.log(`[ao-dashboard] server listening on :${PORT}`)

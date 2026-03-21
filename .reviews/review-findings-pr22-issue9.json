@@ -1,0 +1,36 @@
+{
+  "pr": 22,
+  "issue": 9,
+  "branch": "feat/issue-9",
+  "reviewer": "archimedes",
+  "reviewed_at": "2026-03-21T07:30:00Z",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "severity": "critical",
+      "file": "src/App.tsx",
+      "description": "Overwrites Layout Shell with /config-only single-route stub."
+    },
+    {
+      "severity": "critical",
+      "file": "src/main.tsx",
+      "description": "Removes full routing."
+    },
+    {
+      "severity": "major",
+      "file": "tailwind.config.js",
+      "description": "Re-adds Leo tokens already in main (different key format: bg-void vs void). After rebase: keep main's tailwind.config.js."
+    },
+    {
+      "severity": "minor",
+      "file": "src/pages/Config.tsx",
+      "description": "Named Config.tsx, stub in main is ConfigPage.tsx. Rename after rebase."
+    }
+  ],
+  "positive": [
+    "ConfigViewer, SkillsBrowser, MemoryBrowser all read-only — correct per spec",
+    "server/api/config.js, memory.js, skills.js wrap filesystem reads only — no writes",
+    "TeamManifest component is a nice addition"
+  ],
+  "action": "Rebase onto main, resolve conflicts, populate ConfigPage.tsx"
+}

@@ -1,4 +1,6 @@
 import type { ServiceInfo } from '../../lib/types'
+import Skeleton from '../ui/Skeleton'
+import EmptyState from '../ui/EmptyState'
 
 const GROUPS = ['Core', 'Agents', 'Integrations'] as const
 const STATUS_STYLES: Record<string, string> = {
@@ -28,7 +30,7 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
             <div className="mb-3 h-4 w-24 rounded bg-bg-overlay" />
             <div className="space-y-3">
               {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="h-28 animate-skeleton rounded-md bg-gradient-to-r from-bg-overlay via-bg-hover to-bg-overlay" />
+                <Skeleton key={index} className="h-28" />
               ))}
             </div>
           </div>
@@ -50,6 +52,9 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
               </span>
             </div>
             <div className="space-y-3">
+              {items.length === 0 && (
+                <EmptyState icon="○" title={`No ${group} services`} />
+              )}
               {items.map((service) => (
                 <article
                   key={service.name}

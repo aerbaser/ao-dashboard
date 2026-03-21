@@ -3,6 +3,7 @@
 import express from 'express'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
+import tasksRouter from './api/tasks.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -13,6 +14,8 @@ app.use(express.json())
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ao-dashboard', ts: new Date().toISOString() })
 })
+
+app.use('/api/tasks', tasksRouter)
 
 // Static client (prod)
 app.use(express.static(join(__dirname, '../dist/client')))

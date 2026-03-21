@@ -1,4 +1,4 @@
-import type { Task, TaskEvent, TaskDecision, TaskContract, TransitionError, PipelineState } from './types';
+import type { Task, TaskEvent, TaskDecision, TaskContract, TransitionError, PipelineState, GlobalStatus, TaskListItem } from './types';
 
 const BASE = '/api';
 
@@ -12,9 +12,21 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   return data as T;
 }
 
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`);
+  if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
+  return res.json();
+}
+
+// ─── GlobalStatus ─────────────────────────────────────────────────────────────
+
+export function getStatus(): Promise<GlobalStatus> {
+  return fetchJson<GlobalStatus>('/status');
+}
+
 // ─── Response shapes from the backend ──────────────────────────────────────
 
-interface TaskListItem {
+interface TaskListResponse {
   task_id: string;
   contract: TaskContract;
   status: {
@@ -29,7 +41,7 @@ interface TaskListItem {
   };
 }
 
-interface TaskDetailResponse extends TaskListItem {
+interface TaskDetailResponse extends TaskListResponse {
   events: TaskEvent[];
   decisions: TaskDecision[];
 }
@@ -43,7 +55,7 @@ function minutesAgo(iso?: string | null): number | null {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
 }
 
-function toTask(item: TaskListItem): Task {
+function toTask(item: TaskListResponse): Task {
   const s = item.status;
   const c = item.contract;
   return {
@@ -68,8 +80,13 @@ function toTask(item: TaskListItem): Task {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function fetchTasks(): Promise<Task[]> {
-  const items = await request<TaskListItem[]>('/tasks');
+  const items = await request<TaskListResponse[]>('/tasks');
   return items.map(toTask);
+}
+
+/** getTasks — alias returning raw TaskListItem shape (used by Layout Shell) */
+export function getTasks(): Promise<TaskListItem[]> {
+  return fetchJson<TaskListItem[]>('/tasks');
 }
 
 export async function fetchTask(id: string): Promise<Task> {
@@ -80,35 +97,21 @@ export async function fetchTask(id: string): Promise<Task> {
   return task;
 }
 
-export async function fetchTaskEvents(id: string): Promise<TaskEvent[]> {
-  const item = await request<TaskDetailResponse>(`/tasks/${id}`);
-  return item.events || [];
+export async function fetchTaskEvents(taskId: string): Promise<TaskEvent[]> {
+  return request<TaskEvent[]>(`/tasks/${taskId}/events`);
 }
 
-export async function fetchTaskDecisions(id: string): Promise<TaskDecision[]> {
-  const item = await request<TaskDetailResponse>(`/tasks/${id}`);
-  return item.decisions || [];
+export async function fetchTaskDecisions(taskId: string): Promise<TaskDecision[]> {
+  return request<TaskDecision[]>(`/tasks/${taskId}/decisions`);
 }
 
-export async function fetchTaskContract(id: string): Promise<TaskContract> {
-  const item = await request<TaskDetailResponse>(`/tasks/${id}`);
-  return item.contract;
-}
-
-export function createTask(data: {
-  title: string;
-  route: string;
-  outcome_type: string;
-}): Promise<{ ok: true; task_id: string }> {
-  return request('/tasks', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+export async function fetchTaskContract(taskId: string): Promise<TaskContract> {
+  return request<TaskContract>(`/tasks/${taskId}/contract`);
 }
 
 export async function transitionTask(
   id: string,
-  state: string
+  state: PipelineState
 ): Promise<{ ok: true } | TransitionError> {
   try {
     return await request(`/tasks/${id}/transition`, {
@@ -117,7 +120,7 @@ export async function transitionTask(
     });
   } catch (e: unknown) {
     const err = e as Record<string, string>;
-    if (err.error === 'GUARD_VIOLATION') {
+    if (err?.error === 'GUARD_VIOLATION') {
       return {
         error: 'GUARD_VIOLATION',
         message: err.detail || err.message || 'Guard violation',
@@ -137,5 +140,16 @@ export function addTaskEvent(
   return request(`/tasks/${id}/event`, {
     method: 'POST',
     body: JSON.stringify({ type: eventType, payload: data }),
+  });
+}
+
+export function createTask(data: {
+  title: string;
+  route: string;
+  outcome_type: string;
+}): Promise<{ task_id: string }> {
+  return request('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }

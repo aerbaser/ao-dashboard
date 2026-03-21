@@ -4,6 +4,7 @@ import express from 'express'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 import tasksRouter from './api/tasks.js'
+import statusRouter from './api/status.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -18,6 +19,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/tasks', tasksRouter)
+app.use('/api/status', statusRouter)
 
 // Static client (prod)
 app.use(express.static(join(__dirname, '../dist/client')))

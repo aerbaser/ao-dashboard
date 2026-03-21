@@ -132,7 +132,7 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh }: KanbanBoardProps)
       if (!over) return;
 
       const taskId = active.id as string;
-      const targetState = over.id as string;
+      const targetState = over.id as import("../../lib/types").PipelineState;
       const task = tasks.find((t) => t.id === taskId);
       if (!task || task.state === targetState) return;
 

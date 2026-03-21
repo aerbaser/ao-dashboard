@@ -1,3 +1,19 @@
+// GlobalStatus — live system status from GET /api/status
+export interface GlobalStatus {
+  gateway_up: boolean
+  agents_alive: number
+  agents_total: number
+  active_tasks: number
+  blocked_tasks: number
+  stuck_tasks: number
+  failed_services: number
+  cpu_percent: number | null
+  cpu_temp: number | null
+  claude_usage_percent: number | null
+  codex_usage_percent: number | null
+  timestamp: string
+}
+
 export const PIPELINE_STATES = [
   'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
   'EXECUTION', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
@@ -102,3 +118,21 @@ export interface TransitionError {
 }
 
 export type StateGroup = 'active' | 'terminal' | 'error' | 'all';
+
+// TaskListItem — shape returned by GET /api/tasks and GET /api/tasks/:id
+export interface TaskListItem {
+  id: string;
+  state: PipelineState;
+  owner: string;
+  route: string;
+  title: string;
+  age: number | null;
+  ttl: string | null;
+  blockers: number;
+  retries: number;
+  terminal: boolean;
+  hasQuality: boolean;
+  hasOutcome: boolean;
+  hasRelease: boolean;
+  state_entered_at?: string;
+}

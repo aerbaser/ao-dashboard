@@ -1,0 +1,36 @@
+{
+  "pr": 21,
+  "issue": 8,
+  "branch": "feat/issue-8",
+  "reviewer": "archimedes",
+  "reviewed_at": "2026-03-21T07:30:00Z",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "severity": "critical",
+      "file": "src/App.tsx",
+      "description": "Overwrites Layout Shell with /logs-only single-route app. Same rebase issue as #20."
+    },
+    {
+      "severity": "critical",
+      "file": "src/main.tsx",
+      "description": "Same as #20 — removes full routing."
+    },
+    {
+      "severity": "major",
+      "file": "tailwind.config.js",
+      "description": "Adds 11 non-Leo colors: #10B981, #34D399, #4ADE80, #6EE7B7, #818CF8, #A7F3D0, #D1FAE5, #DC2626, #F472B6, #F97316, #FB923C. These are standard Tailwind palette values not from design-tokens.json. Violates .agent-rules.md design constraint. Remove after rebase."
+    },
+    {
+      "severity": "minor",
+      "file": "src/pages/Logs.tsx",
+      "description": "Named Logs.tsx, stub in main is LogsPage.tsx. Rename after rebase."
+    }
+  ],
+  "positive": [
+    "LogViewer, DecisionTrail, EventStream well-structured components",
+    "server/api/logs.js reads from real filesystem paths (events.ndjson, decision-log.jsonl)",
+    "Virtual scroll pattern correct for large log sets"
+  ],
+  "action": "Rebase onto main, resolve conflicts, remove non-Leo tailwind additions, populate LogsPage.tsx"
+}

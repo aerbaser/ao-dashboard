@@ -50,8 +50,9 @@ export default function Logs() {
 
   useEffect(() => {
     if (activeTab !== 'gateway') return
-    fetchGateway()
     if (paused) return
+
+    fetchGateway()
 
     const id = setInterval(fetchGateway, POLL_INTERVAL)
     return () => clearInterval(id)

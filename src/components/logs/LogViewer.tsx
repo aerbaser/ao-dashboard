@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 
 interface LogViewerProps {
@@ -31,13 +31,15 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
   const [expandedLine, setExpandedLine] = useState<number | null>(null)
   const parentRef = useRef<HTMLDivElement>(null)
   const shouldAutoScroll = useRef(true)
+  const deferredKeyword = useDeferredValue(keyword)
+  const allSelected = selectedLevels.size === ALL_LEVELS.length
 
   const filteredLines = useMemo(() => {
     return lines
       .map((line, i) => ({ line, index: i, level: detectLevel(line) }))
       .filter(({ level }) => selectedLevels.has(level))
-      .filter(({ line }) => !keyword || line.toLowerCase().includes(keyword.toLowerCase()))
-  }, [lines, selectedLevels, keyword])
+      .filter(({ line }) => !deferredKeyword || line.toLowerCase().includes(deferredKeyword.toLowerCase()))
+  }, [lines, selectedLevels, deferredKeyword])
 
   const virtualizer = useVirtualizer({
     count: filteredLines.length,
@@ -48,17 +50,17 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
 
   // Auto-scroll to bottom when not paused
   useEffect(() => {
-    if (!paused && shouldAutoScroll.current && parentRef.current) {
+    if (!paused && shouldAutoScroll.current && parentRef.current && filteredLines.length > 0) {
       virtualizer.scrollToIndex(filteredLines.length - 1, { align: 'end' })
     }
   }, [filteredLines.length, paused, virtualizer])
 
   // Track if user has scrolled away from bottom
   const handleScroll = useCallback(() => {
-    if (!parentRef.current || paused) return
+    if (!parentRef.current) return
     const { scrollTop, scrollHeight, clientHeight } = parentRef.current
     shouldAutoScroll.current = scrollHeight - scrollTop - clientHeight < 50
-  }, [paused])
+  }, [])
 
   // When paused, lock scroll position
   useEffect(() => {
@@ -81,6 +83,10 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
     })
   }
 
+  function selectAllLevels() {
+    setSelectedLevels(new Set(ALL_LEVELS))
+  }
+
   function tryParseJson(line: string): string | null {
     // Try to extract JSON from the log line
     const jsonMatch = line.match(/\{[\s\S]*\}/)
@@ -98,6 +104,16 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
     <div className="flex flex-col h-full">
       {/* Filter bar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle bg-bg-surface">
+        <button
+          onClick={selectAllLevels}
+          className={`px-2 py-0.5 rounded-sm text-xs font-mono transition-colors ${
+            allSelected
+              ? 'bg-bg-elevated text-text-primary'
+              : 'bg-bg-void text-text-tertiary hover:text-text-secondary'
+          }`}
+        >
+          ALL
+        </button>
         {ALL_LEVELS.map((level) => (
           <button
             key={level}
@@ -137,6 +153,10 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
       ) : loading && lines.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">
           Loading logs…
+        </div>
+      ) : filteredLines.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">
+          No matching log lines
         </div>
       ) : (
         <div

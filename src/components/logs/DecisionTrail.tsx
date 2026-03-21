@@ -10,6 +10,10 @@ const resultBadge: Record<string, string> = {
   DELEGATED: 'bg-accent-amber-subtle text-accent-amber',
 }
 
+function displayTimestamp(value: string): string {
+  return value || '—'
+}
+
 export default function DecisionTrail() {
   const [decisions, setDecisions] = useState<Decision[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,24 +45,24 @@ export default function DecisionTrail() {
   }, [])
 
   const agents = useMemo(() => {
-    const set = new Set(decisions.map((d) => d.agent).filter(Boolean))
+    const set = new Set(decisions.map((d) => d.agent))
     return Array.from(set).sort()
   }, [decisions])
 
   const filtered = useMemo(() => {
     let result = decisions
     if (filterAgent) result = result.filter((d) => d.agent === filterAgent)
-    if (filterTaskId) result = result.filter((d) => d.task_id?.includes(filterTaskId))
+    if (filterTaskId) result = result.filter((d) => d.task_id.includes(filterTaskId))
     if (filterDateFrom) {
-      result = result.filter((d) => (d.timestamp || d.ts || '') >= filterDateFrom)
+      result = result.filter((d) => d.timestamp >= filterDateFrom)
     }
     if (filterDateTo) {
-      result = result.filter((d) => (d.timestamp || d.ts || '') <= filterDateTo + 'T23:59:59')
+      result = result.filter((d) => d.timestamp <= `${filterDateTo}T23:59:59`)
     }
 
     result = [...result].sort((a, b) => {
-      const av = String((a as Record<string, unknown>)[sortField] ?? '')
-      const bv = String((b as Record<string, unknown>)[sortField] ?? '')
+      const av = String(a[sortField] ?? '')
+      const bv = String(b[sortField] ?? '')
       const cmp = av.localeCompare(bv)
       return sortDir === 'asc' ? cmp : -cmp
     })
@@ -150,9 +154,9 @@ export default function DecisionTrail() {
             ) : (
               filtered.map((d, i) => (
                 <tr key={i} className="border-b border-border-subtle hover:bg-bg-hover">
-                  <td className="px-3 py-1.5">{d.agent || '—'}</td>
-                  <td className="px-3 py-1.5 text-accent-blue">{d.task_id || '—'}</td>
-                  <td className="px-3 py-1.5">{d.gate_type || '—'}</td>
+                  <td className="px-3 py-1.5">{d.agent}</td>
+                  <td className="px-3 py-1.5 text-accent-blue">{d.task_id}</td>
+                  <td className="px-3 py-1.5">{d.gate_type}</td>
                   <td className="px-3 py-1.5">
                     {d.result ? (
                       <span className={`px-1.5 py-0.5 rounded-sm ${resultBadge[d.result] || 'bg-bg-elevated text-text-secondary'}`}>
@@ -160,7 +164,7 @@ export default function DecisionTrail() {
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-3 py-1.5 text-text-tertiary">{d.timestamp || d.ts || '—'}</td>
+                  <td className="px-3 py-1.5 text-text-tertiary">{displayTimestamp(d.timestamp)}</td>
                 </tr>
               ))
             )}

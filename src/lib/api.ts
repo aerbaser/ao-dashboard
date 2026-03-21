@@ -21,25 +21,25 @@ export interface WorkerLogResponse {
 }
 
 export interface Decision {
-  agent?: string
-  task_id?: string
-  gate_type?: string
-  result?: string
-  timestamp?: string
+  agent: string
+  task_id: string
+  gate_type: string
+  result: string
+  timestamp: string
   ts?: string
-  _task_dir?: string
+  _task_dir: string
   [key: string]: unknown
 }
 
 export interface Event {
-  type?: string
-  actor?: string
+  type: string
+  actor: string
   agent?: string
-  task_id?: string
-  timestamp?: string
+  task_id: string
+  timestamp: string
   ts?: string
   data?: Record<string, unknown>
-  _task_dir?: string
+  _task_dir: string
   [key: string]: unknown
 }
 
@@ -61,10 +61,17 @@ export function getWorkerLog(name: string, lines = 100): Promise<WorkerLogRespon
   return fetchJson(`/api/logs/worker/${encodeURIComponent(name)}?lines=${lines}`)
 }
 
-export function getDecisions(params?: { agent?: string; task_id?: string }): Promise<Decision[]> {
+export function getDecisions(params?: {
+  agent?: string
+  task_id?: string
+  from?: string
+  to?: string
+}): Promise<Decision[]> {
   const sp = new URLSearchParams()
   if (params?.agent) sp.set('agent', params.agent)
   if (params?.task_id) sp.set('task_id', params.task_id)
+  if (params?.from) sp.set('from', params.from)
+  if (params?.to) sp.set('to', params.to)
   const qs = sp.toString()
   return fetchJson(`/api/decisions${qs ? `?${qs}` : ''}`)
 }

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Envelope } from '../../lib/api'
 import { fetchAgentMailbox, deleteEnvelope, moveEnvelope } from '../../lib/api'
+import type { ToastPayload } from '../../hooks/useToast'
 
 const FOLDERS = ['inbox', 'processing', 'done', 'deadletter'] as const
 
 interface MailboxViewerProps {
   agentId: string
-  onToast: (message: string) => void
+  onToast: (toast: ToastPayload) => void
 }
 
 export default function MailboxViewer({ agentId, onToast }: MailboxViewerProps) {
@@ -31,20 +32,20 @@ export default function MailboxViewer({ agentId, onToast }: MailboxViewerProps) 
   const handleDelete = async (envId: string) => {
     const result = await deleteEnvelope(agentId, folder, envId)
     if (result.ok) {
-      onToast('Envelope deleted')
+      onToast({ message: 'Envelope deleted', variant: 'success' })
       load()
     } else {
-      onToast(`Delete failed: ${result.error}`)
+      onToast({ message: `Delete failed: ${result.error}`, variant: 'error' })
     }
   }
 
   const handleRetry = async (envId: string) => {
     const result = await moveEnvelope(agentId, folder, 'inbox', envId)
     if (result.ok) {
-      onToast('Moved to inbox')
+      onToast({ message: 'Moved to inbox', variant: 'success' })
       load()
     } else {
-      onToast(`Move failed: ${result.error}`)
+      onToast({ message: `Move failed: ${result.error}`, variant: 'error' })
     }
   }
 

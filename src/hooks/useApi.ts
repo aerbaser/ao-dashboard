@@ -25,7 +25,7 @@ export function useApi<T>(url: string, intervalMs?: number): UseApiResult<T> {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Request failed'
       setError(msg)
-      push(msg, 'error')
+      push({ message: msg, variant: 'error' })
     } finally {
       if (isFirstFetch.current) {
         isFirstFetch.current = false

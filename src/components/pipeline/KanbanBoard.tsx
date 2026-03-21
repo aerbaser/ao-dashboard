@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { useToast } from '../../hooks/useToast';
 import {
   DndContext,
   DragOverlay,
@@ -22,6 +21,7 @@ import { transitionTask } from '../../lib/api';
 import { TaskCard } from './TaskCard';
 import Skeleton from '../ui/Skeleton';
 import EmptyState from '../ui/EmptyState';
+import { useToast } from '../../hooks/useToast';
 
 // Pipeline state color map for column headers
 const STATE_COLORS: Record<PipelineState, string> = {
@@ -121,8 +121,9 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const { push: pushToast } = useToast();
+
   const [errors, setErrors] = useState<Record<string, TransitionError>>({});
+  const { push } = useToast();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -153,16 +154,14 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
       const task = tasks.find((t) => t.id === taskId);
       if (!task || task.state === targetState) return;
 
-      // Show transition toast
       const label = targetState.replace(/_/g, ' ');
-      pushToast(`Transitioning → ${label}...`, 'info');
 
       try {
         const result = await transitionTask(taskId, targetState);
         if ('error' in result) {
           // Guard violation: show inline error on card
           setErrors((prev) => ({ ...prev, [taskId]: result as TransitionError }));
-          pushToast(`Guard violation: cannot move to ${label}`, 'error');
+          push({ message: result.message ?? `Guard violation: cannot move to ${label}`, variant: 'error' });
         } else {
           // Clear any previous error for this task
           setErrors((prev) => {
@@ -170,18 +169,21 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
             delete next[taskId];
             return next;
           });
-          pushToast(`Moved to ${label}`, 'success');
+          push({ message: `Moved task to ${label}`, variant: 'success' });
           onRefresh();
         }
       } catch (e: unknown) {
         const err = e as TransitionError;
         if (err.error === 'GUARD_VIOLATION') {
           setErrors((prev) => ({ ...prev, [taskId]: err }));
+          push({ message: err.message, variant: 'error' });
+          return;
         }
-        pushToast('Transition failed', 'error');
+        const message = e instanceof Error ? e.message : 'Task transition failed';
+        push({ message, variant: 'error' });
       }
     },
-    [tasks, onRefresh]
+    [tasks, onRefresh, push]
   );
 
   const allStates: PipelineState[] = [...MAIN_FLOW_STATES, ...SIDE_STATES];

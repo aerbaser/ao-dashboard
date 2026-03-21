@@ -3,13 +3,14 @@ import ReactMarkdown from 'react-markdown'
 import type { AgentInfo } from '../../lib/api'
 import { fetchAgentInboxMd, fetchAgentLog, fetchAgentEvents, sendAgentMessage, wakeAgent } from '../../lib/api'
 import MailboxViewer from './MailboxViewer'
+import type { ToastPayload } from '../../hooks/useToast'
 
 const TABS = ['Mailbox', 'INBOX.md', 'Comm Log', 'Events', 'Info'] as const
 
 interface AgentDetailProps {
   agent: AgentInfo
   onClose: () => void
-  onToast: (message: string) => void
+  onToast: (toast: ToastPayload) => void
 }
 
 export default function AgentDetail({ agent, onClose, onToast }: AgentDetailProps) {
@@ -23,13 +24,13 @@ export default function AgentDetail({ agent, onClose, onToast }: AgentDetailProp
     try {
       const result = await sendAgentMessage(agent.id, messageText.trim())
       if (result.ok) {
-        onToast('Message sent')
+        onToast({ message: 'Message sent', variant: 'success' })
         setMessageText('')
       } else {
-        onToast(`Send failed: ${result.error}`)
+        onToast({ message: `Send failed: ${result.error}`, variant: 'error' })
       }
     } catch {
-      onToast('Send failed')
+      onToast({ message: 'Send failed', variant: 'error' })
     } finally {
       setSending(false)
     }
@@ -39,12 +40,12 @@ export default function AgentDetail({ agent, onClose, onToast }: AgentDetailProp
     try {
       const result = await wakeAgent(agent.id)
       if (result.ok) {
-        onToast(`${agent.name} woken`)
+        onToast({ message: `${agent.name} woken`, variant: 'success' })
       } else {
-        onToast(`Wake failed: ${result.error}`)
+        onToast({ message: `Wake failed: ${result.error}`, variant: 'error' })
       }
     } catch {
-      onToast('Wake failed')
+      onToast({ message: 'Wake failed', variant: 'error' })
     }
   }
 

@@ -11,6 +11,10 @@ export interface AgentInfo {
   progress_note: string | null;
   checkpoint_safe: boolean | null;
   last_seen: string | null;
+  session_key: string | null;
+  workspace_path: string | null;
+  topic_id: number | null;
+  heartbeat_raw: Record<string, unknown> | null;
   mailbox: {
     inbox: number;
     processing: number;
@@ -28,6 +32,15 @@ export interface Envelope {
   created_at: string;
   expires_at: string | null;
   payload?: unknown;
+}
+
+export interface AgentEvent {
+  event_id?: string;
+  event_type?: string;
+  task_id?: string;
+  actor?: string;
+  timestamp?: string;
+  [key: string]: unknown;
 }
 
 export async function fetchAgents(): Promise<AgentInfo[]> {
@@ -56,7 +69,7 @@ export async function fetchAgentLog(agentId: string): Promise<string> {
   return data.content;
 }
 
-export async function fetchAgentEvents(agentId: string): Promise<unknown[]> {
+export async function fetchAgentEvents(agentId: string): Promise<AgentEvent[]> {
   const res = await fetch(`${BASE}/events?agent=${agentId}`);
   if (!res.ok) throw new Error(`Failed to fetch events: ${res.status}`);
   return res.json();

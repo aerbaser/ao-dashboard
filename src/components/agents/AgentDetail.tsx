@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
-import type { AgentInfo } from '../../lib/api'
+import type { AgentEvent, AgentInfo } from '../../lib/api'
 import { fetchAgentInboxMd, fetchAgentLog, fetchAgentEvents, sendAgentMessage, wakeAgent } from '../../lib/api'
 import MailboxViewer from './MailboxViewer'
 
@@ -54,7 +54,7 @@ export default function AgentDetail({ agent, onClose, onToast }: AgentDetailProp
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed top-0 right-0 h-full w-[420px] max-w-full bg-bg-elevated border-l border-border-subtle z-50 flex flex-col animate-slide-in-right shadow-lg">
+      <div className="fixed top-0 right-0 h-full w-panel-detail max-w-full bg-bg-elevated border-l border-border-subtle z-50 flex flex-col animate-slide-in-right shadow-lg">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle shrink-0">
           <span className="text-2xl">{agent.emoji}</span>
@@ -183,14 +183,14 @@ function CommLogTab({ agentId }: { agentId: string }) {
   }
 
   return (
-    <div className="prose prose-invert prose-sm max-w-none text-[12px] text-text-secondary [&_h1]:text-text-primary [&_h2]:text-text-primary [&_h3]:text-text-primary [&_a]:text-accent-blue [&_code]:text-accent-amber [&_code]:bg-bg-surface [&_code]:px-1 [&_code]:rounded [&_pre]:bg-bg-void [&_pre]:border [&_pre]:border-border-subtle [&_pre]:rounded">
-      <ReactMarkdown>{content}</ReactMarkdown>
-    </div>
+    <pre className="whitespace-pre-wrap break-words rounded-md border border-border-subtle bg-bg-void p-3 text-[11px] font-mono text-text-secondary">
+      {content}
+    </pre>
   )
 }
 
 function EventsTab({ agentId }: { agentId: string }) {
-  const [events, setEvents] = useState<unknown[] | null>(null)
+  const [events, setEvents] = useState<AgentEvent[] | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -213,6 +213,10 @@ function EventsTab({ agentId }: { agentId: string }) {
     <div className="space-y-2">
       {events.map((event, i) => (
         <div key={i} className="bg-bg-surface border border-border-subtle rounded p-2 text-[11px] font-mono text-text-secondary">
+          <div className="mb-1 flex items-center justify-between gap-3 text-[10px] text-text-tertiary">
+            <span>{event.event_type ?? 'event'}</span>
+            <span>{event.timestamp ?? 'unknown time'}</span>
+          </div>
           <pre className="whitespace-pre-wrap">{JSON.stringify(event, null, 2)}</pre>
         </div>
       ))}
@@ -232,10 +236,19 @@ function InfoTab({ agent }: { agent: AgentInfo }) {
       <InfoRow label="Progress" value={agent.progress_note ?? 'none'} />
       <InfoRow label="Checkpoint Safe" value={agent.checkpoint_safe === null ? 'unknown' : agent.checkpoint_safe ? 'yes' : 'no'} />
       <InfoRow label="Last Seen" value={agent.last_seen ?? 'never'} />
+      <InfoRow label="Session Key" value={agent.session_key ?? 'unknown'} />
+      <InfoRow label="Workspace" value={agent.workspace_path ?? 'unknown'} />
+      <InfoRow label="Topic ID" value={agent.topic_id === null ? 'unknown' : String(agent.topic_id)} />
       <div className="pt-2 border-t border-border-subtle">
         <div className="text-[10px] text-text-disabled mb-1">Heartbeat paths</div>
         <div className="text-[11px] font-mono text-text-tertiary">~/clawd/runtime/heartbeats/{agent.id}.json</div>
         <div className="text-[11px] font-mono text-text-tertiary">~/clawd/runtime/mailboxes/{agent.id}/</div>
+      </div>
+      <div className="pt-2 border-t border-border-subtle">
+        <div className="text-[10px] text-text-disabled mb-1">Last heartbeat raw JSON</div>
+        <pre className="max-h-64 overflow-auto rounded-md border border-border-subtle bg-bg-void p-3 text-[11px] font-mono text-text-secondary">
+          {JSON.stringify(agent.heartbeat_raw ?? {}, null, 2)}
+        </pre>
       </div>
     </div>
   )

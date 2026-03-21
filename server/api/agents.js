@@ -10,6 +10,8 @@ const HOME = process.env.HOME || '/home/aiadmin'
 const HEARTBEATS_DIR = join(HOME, 'clawd/runtime/heartbeats')
 const MAILBOXES_DIR = join(HOME, 'clawd/runtime/mailboxes')
 const COMM_DIR = join(HOME, '.openclaw/shared-memory/communication')
+const SESSIONS_DIR = join(HOME, '.openclaw/agents')
+const TASKS_DIR = join(HOME, 'clawd/tasks')
 const SESSIONS_SEND = join(HOME, 'clawd/scripts/sessions-send.js')
 const WEBHOOKS_FILE = join(HOME, 'clawd/runtime/agent-webhooks.json')
 
@@ -34,6 +36,105 @@ async function safeReadJson(filePath) {
   } catch {
     return null
   }
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' ? value : null
+}
+
+function extractTopicId(sessionKey, session) {
+  if (Number.isInteger(session?.deliveryContext?.threadId)) {
+    return session.deliveryContext.threadId
+  }
+
+  if (Number.isInteger(session?.lastThreadId)) {
+    return session.lastThreadId
+  }
+
+  const match = sessionKey?.match(/topic:(\d+)/)
+  return match ? Number(match[1]) : null
+}
+
+export async function extractLatestSessionMeta(sessionsFilePath) {
+  const sessions = asObject(await safeReadJson(sessionsFilePath))
+  if (!sessions) {
+    return {
+      session_key: null,
+      workspace_path: null,
+      topic_id: null,
+    }
+  }
+
+  const latestEntry = Object.entries(sessions)
+    .filter(([, session]) => asObject(session))
+    .sort(([, left], [, right]) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0))[0]
+
+  if (!latestEntry) {
+    return {
+      session_key: null,
+      workspace_path: null,
+      topic_id: null,
+    }
+  }
+
+  const [fallbackKey, session] = latestEntry
+  const report = asObject(session.systemPromptReport)
+  const sessionKey = report?.sessionKey ?? fallbackKey
+
+  return {
+    session_key: sessionKey,
+    workspace_path: report?.workspaceDir ?? null,
+    topic_id: extractTopicId(sessionKey, session),
+  }
+}
+
+async function findEventFiles(rootDir) {
+  const entries = await readdir(rootDir, { withFileTypes: true }).catch(() => [])
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = join(rootDir, entry.name)
+      if (entry.isDirectory()) {
+        return findEventFiles(fullPath)
+      }
+      return entry.name === 'events.ndjson' ? [fullPath] : []
+    }),
+  )
+  return files.flat()
+}
+
+async function parseEventFile(filePath) {
+  const content = await readFile(filePath, 'utf-8').catch(() => '')
+  return content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line)]
+      } catch {
+        return []
+      }
+    })
+}
+
+export async function aggregateAgentEvents(tasksRoot, agentId) {
+  const eventFiles = await findEventFiles(tasksRoot)
+  const events = (
+    await Promise.all(eventFiles.map((filePath) => parseEventFile(filePath)))
+  )
+    .flat()
+    .filter((event) => event?.actor === agentId)
+    .sort((left, right) => {
+      const leftTs = Date.parse(left?.timestamp ?? '') || 0
+      const rightTs = Date.parse(right?.timestamp ?? '') || 0
+      return rightTs - leftTs
+    })
+
+  return events
+}
+
+export async function getAgentEvents(agentId) {
+  return aggregateAgentEvents(TASKS_DIR, agentId)
 }
 
 async function countFiles(dirPath) {
@@ -67,6 +168,9 @@ router.get('/', async (_req, res) => {
     const agents = await Promise.all(
       AGENT_META.map(async (meta) => {
         const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${meta.id}.json`))
+        const sessionMeta = await extractLatestSessionMeta(
+          join(SESSIONS_DIR, meta.id, 'sessions', 'sessions.json'),
+        )
         const mailbox = {
           inbox:      await countFiles(join(MAILBOXES_DIR, meta.id, 'inbox')),
           processing: await countFiles(join(MAILBOXES_DIR, meta.id, 'processing')),
@@ -85,6 +189,10 @@ router.get('/', async (_req, res) => {
           progress_note: heartbeat?.progress_note ?? null,
           checkpoint_safe: heartbeat?.checkpoint_safe ?? null,
           last_seen: heartbeat?.updated_at ?? null,
+          session_key: sessionMeta.session_key,
+          workspace_path: sessionMeta.workspace_path,
+          topic_id: sessionMeta.topic_id,
+          heartbeat_raw: heartbeat,
           mailbox,
         }
       })

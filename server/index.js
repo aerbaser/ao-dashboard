@@ -2,7 +2,7 @@
 import express from 'express'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
-import agentsRouter from './api/agents.js'
+import agentsRouter, { getAgentEvents } from './api/agents.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -17,10 +17,19 @@ app.get('/api/health', (_req, res) => {
 // Agent API routes
 app.use('/api/agents', agentsRouter)
 
-// Events endpoint (delegated from agents router for /api/events?agent=X)
+// Events endpoint aggregated from task event logs for /api/events?agent=X
 app.get('/api/events', async (req, res) => {
-  // Events aggregation stub — will integrate with task-store events.ndjson
-  res.json([])
+  const agentId = typeof req.query.agent === 'string' ? req.query.agent : null
+  if (!agentId) {
+    return res.status(400).json({ error: 'agent query param is required' })
+  }
+
+  try {
+    const events = await getAgentEvents(agentId)
+    res.json(events)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // Static client (prod)

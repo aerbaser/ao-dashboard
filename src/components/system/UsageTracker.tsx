@@ -1,75 +1,122 @@
 import { useEffect, useState } from 'react'
+import type { RateLimitsResponse } from '../../lib/types'
+import { getUsageTone } from './usageTone'
 
-interface RateLimitProfile {
-  profile: string
-  tokens_used: number
-  tokens_limit: number
-  requests_used: number
-  requests_limit: number
-  reset_at: string
-  model: string
+interface UsageTrackerProps {
+  data: RateLimitsResponse | null
+  loading: boolean
+  onSwitchProfile: (profile: string) => void | Promise<void>
 }
 
-interface RateLimitsResponse {
-  cached: boolean
-  stale: boolean
-  profiles: RateLimitProfile[]
+function getProgress(used: number, limit: number) {
+  if (limit <= 0) return 0
+  return Math.min(1, used / limit)
 }
 
-const POLL_INTERVAL = 10_000
+function toneClasses(progress: number) {
+  const tone = getUsageTone(progress)
+  if (tone === 'red') return 'bg-red'
+  if (tone === 'amber') return 'bg-amber'
+  return 'bg-emerald'
+}
 
-export default function UsageTracker() {
-  const [data, setData] = useState<RateLimitsResponse | null>(null)
+function formatCountdown(resetAt: string | null, now: number) {
+  if (!resetAt) return 'Unknown'
+  const diff = Math.max(0, new Date(resetAt).getTime() - now)
+  const totalSeconds = Math.floor(diff / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${hours}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`
+}
+
+export default function UsageTracker({ data, loading, onSwitchProfile }: UsageTrackerProps) {
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
-    let active = true
-
-    async function poll() {
-      try {
-        const res = await fetch('/api/rate-limits')
-        if (res.ok && active) {
-          setData(await res.json())
-        }
-      } catch {
-        // Retry on next interval
-      }
-    }
-
-    poll()
-    const id = setInterval(poll, POLL_INTERVAL)
-    return () => { active = false; clearInterval(id) }
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
   }, [])
 
-  if (!data) return <div>Loading usage data…</div>
+  if (loading && !data) {
+    return <div className="rounded-lg border border-border-subtle bg-bg-surface p-6 text-sm text-text-tertiary">Loading usage data…</div>
+  }
 
-  if (!data.cached || data.profiles.length === 0) {
+  if (!data || data.profiles.length === 0 || !data.cached) {
     return (
-      <div style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-        <p>Rate-limit cache: {data.cached ? 'available' : 'unavailable'}{data.stale ? ' (stale)' : ''}</p>
-        <p>No profiles loaded.</p>
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-6 text-sm text-text-tertiary">
+        Rate-limit cache unavailable.
       </div>
     )
   }
 
   return (
-    <div style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-      <h3>Rate Limits {data.stale && '(stale)'}</h3>
-      {data.profiles.map(p => {
-        const tokenPct = p.tokens_limit > 0
-          ? Math.round((p.tokens_used / p.tokens_limit) * 100)
-          : 0
-        const reqPct = p.requests_limit > 0
-          ? Math.round((p.requests_used / p.requests_limit) * 100)
-          : 0
-        return (
-          <div key={p.profile} style={{ marginBottom: '0.5rem' }}>
-            <strong>{p.profile}</strong> ({p.model})
-            <div>Tokens: {p.tokens_used}/{p.tokens_limit} ({tokenPct}%)</div>
-            <div>Requests: {p.requests_used}/{p.requests_limit} ({reqPct}%)</div>
-            <div>Resets: {p.reset_at}</div>
-          </div>
-        )
-      })}
+    <div className="rounded-lg border border-border-subtle bg-bg-surface shadow-panel">
+      <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-text-primary">Usage Tracker</h2>
+          <p className="mt-1 text-xs text-text-tertiary">
+            Live token and request budgets{data.stale ? ' (stale cache)' : ''}.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3 p-4">
+        {data.profiles.map((profile) => {
+          const tokenProgress = getProgress(profile.tokens_used, profile.tokens_limit)
+          const requestProgress = getProgress(profile.requests_used, profile.requests_limit)
+          return (
+            <div key={profile.id} className="rounded-md border border-border-default bg-bg-elevated p-3">
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-text-primary">{profile.label}</h3>
+                    {profile.active && (
+                      <span className="rounded-full border border-emerald/30 bg-emerald-subtle px-2 py-0.5 font-mono text-[11px] text-emerald">
+                        active
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 font-mono text-xs text-text-tertiary">{profile.model}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void onSwitchProfile(profile.profile)}
+                  className="rounded-sm border border-border-subtle px-3 py-1.5 font-mono text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                >
+                  Switch profile
+                </button>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-[1fr_1fr_132px] lg:items-center">
+                <div>
+                  <div className="mb-1 flex justify-between font-mono text-xs text-text-secondary">
+                    <span>Tokens</span>
+                    <span>{profile.tokens_used}/{profile.tokens_limit}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-bg-overlay">
+                    <div className={`h-full ${toneClasses(tokenProgress)}`} style={{ width: `${tokenProgress * 100}%` }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1 flex justify-between font-mono text-xs text-text-secondary">
+                    <span>Requests</span>
+                    <span>{profile.requests_used}/{profile.requests_limit}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-bg-overlay">
+                    <div className={`h-full ${toneClasses(requestProgress)}`} style={{ width: `${requestProgress * 100}%` }} />
+                  </div>
+                </div>
+
+                <div className="rounded-md border border-border-subtle bg-bg-base px-3 py-2 font-mono text-xs text-text-secondary">
+                  Reset in {formatCountdown(profile.reset_at, now)}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

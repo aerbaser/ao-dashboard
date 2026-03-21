@@ -136,3 +136,88 @@ export interface TaskListItem {
   hasRelease: boolean;
   state_entered_at?: string;
 }
+
+export type ServiceGroup = 'Core' | 'Agents' | 'Integrations';
+export type ServiceStatus = 'active' | 'inactive' | 'failed' | 'activating' | 'deactivating';
+
+export interface ServiceInfo {
+  name: string;
+  display_name: string;
+  group: ServiceGroup;
+  status: ServiceStatus | string;
+  sub_status?: string;
+  uptime: string;
+  memory_mb: number;
+  port?: number | null;
+  forbidden: boolean;
+}
+
+export interface CronEntry {
+  id: string;
+  schedule: string;
+  command: string;
+  enabled: boolean;
+  label: string;
+  group: 'AO Pipeline' | 'Maintenance' | 'Sync' | 'Other' | string;
+}
+
+export interface CronResponse {
+  entries: CronEntry[];
+}
+
+export interface ProcessInfo {
+  pid: number;
+  name: string;
+  cpu_percent: number;
+  memory_percent: number;
+  memory_mb: number;
+}
+
+export interface DiskDirectoryUsage {
+  path: string;
+  size_mb: number;
+}
+
+export interface VitalsResponse {
+  cpu: {
+    overall: number;
+    temperature: number;
+    per_core: number[];
+  };
+  memory: {
+    used_mb: number;
+    total_mb: number;
+    top_processes: ProcessInfo[];
+  };
+  disk: {
+    used_mb: number;
+    total_mb: number;
+    key_dirs: DiskDirectoryUsage[];
+  };
+  load: {
+    one: number;
+    five: number;
+    fifteen: number;
+  };
+  tailscale_ip: string | null;
+  uptime_seconds: number;
+}
+
+export interface UsageProfile {
+  id: string;
+  label: string;
+  profile: string;
+  model: string;
+  tokens_used: number;
+  tokens_limit: number;
+  requests_used: number;
+  requests_limit: number;
+  reset_at: string | null;
+  active: boolean;
+}
+
+export interface RateLimitsResponse {
+  cached: boolean;
+  stale: boolean;
+  profiles: UsageProfile[];
+}

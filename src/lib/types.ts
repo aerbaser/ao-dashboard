@@ -1,70 +1,104 @@
-// Task-related types matching task-store.js output shapes
+export const PIPELINE_STATES = [
+  'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
+  'EXECUTION', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
+  'FINALIZING', 'DEPLOYING', 'OBSERVING', 'DONE',
+  'BLOCKED', 'FAILED', 'WAITING_USER', 'STUCK',
+] as const;
 
-export interface TaskContract {
-  schema_version: string
-  task_id: string
-  title: string
-  raw_request: string
-  outcome_type: string
-  delivery_mode: string
-  route: string
-  full_solution: boolean
-  approval_policy: string
-  design_approval_mode: string
-  required_gates: string[]
-  owner_map: Record<string, string>
-  success_definition: string[]
-  constraints: string[]
-  created_at: string
-}
+export type PipelineState = (typeof PIPELINE_STATES)[number];
 
-export interface TaskStatus {
-  schema_version: string
-  task_id: string
-  state: string
-  current_owner: string
-  current_route: string
-  last_event_id: string
-  blockers: string[]
-  retries: number
-  deadline_at: string | null
-  updated_at: string
-  last_material_update?: string
-  next_action: string
-}
+export const MAIN_FLOW_STATES: PipelineState[] = [
+  'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
+  'EXECUTION', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
+  'FINALIZING', 'DEPLOYING', 'OBSERVING', 'DONE',
+];
+
+export const SIDE_STATES: PipelineState[] = [
+  'BLOCKED', 'FAILED', 'WAITING_USER', 'STUCK',
+];
+
+export const ERROR_STATES: PipelineState[] = ['BLOCKED', 'FAILED', 'STUCK'];
+export const TERMINAL_STATES: PipelineState[] = ['DONE', 'FAILED'];
+export const ACTIVE_STATES: PipelineState[] = MAIN_FLOW_STATES.filter(
+  (s) => s !== 'DONE'
+);
+
+export const VALID_ROUTES = [
+  'artifact_route', 'build_route', 'diagnostic_route', 'publish_route',
+  'ops_route', 'incident_route', 'hybrid_route',
+] as const;
+
+export type Route = (typeof VALID_ROUTES)[number];
+
+export const VALID_OUTCOME_TYPES = [
+  'strategy_doc', 'design_pack', 'website_release', 'app_release',
+  'bugfix_release', 'audit_pack', 'publish_asset', 'ops_change',
+  'incident_recovery',
+] as const;
+
+export type OutcomeType = (typeof VALID_OUTCOME_TYPES)[number];
 
 export interface TaskEvent {
-  event_id: string
-  event_type: string
-  task_id: string
-  actor: string
-  timestamp: string
-  from_state?: string | null
-  to_state?: string
-  [key: string]: unknown
+  event_id: string;
+  event_type: string;
+  task_id: string;
+  actor: string;
+  timestamp: string;
+  from_state?: string | null;
+  to_state?: string;
+  reason?: string;
+  [key: string]: unknown;
 }
 
 export interface TaskDecision {
-  decision_id: string
-  task_id: string
-  gate_type: string
-  resolved_by: string
-  resolved_at: string
-  resolution_mode: string
-  summary: string
-  [key: string]: unknown
+  decision_id: string;
+  task_id: string;
+  gate_type: string;
+  resolved_by: string;
+  resolved_at: string;
+  resolution_mode: string;
+  summary: string;
 }
 
-export interface TaskDetail {
-  task_id: string
-  contract: TaskContract
-  status: TaskStatus
-  events: TaskEvent[]
-  decisions: TaskDecision[]
+export interface TaskContract {
+  schema_version: string;
+  task_id: string;
+  title: string;
+  raw_request: string;
+  outcome_type: string;
+  delivery_mode: string;
+  route: string;
+  full_solution: boolean;
+  approval_policy: string;
+  constraints: string[];
+  created_at: string;
 }
 
-export interface TaskListItem {
-  task_id: string
-  contract: TaskContract
-  status: TaskStatus
+export interface Task {
+  id: string;
+  state: PipelineState;
+  owner: string;
+  route: string;
+  title: string;
+  age: number | null;
+  ttl: string | null;
+  blockers: number;
+  retries: number;
+  terminal: boolean;
+  hasQuality: boolean;
+  hasOutcome: boolean;
+  hasRelease: boolean;
+  state_entered_at?: string;
+  contract?: TaskContract;
+  events?: TaskEvent[];
+  decisions?: TaskDecision[];
 }
+
+export interface TransitionError {
+  error: string;
+  message: string;
+  task_id: string;
+  requested_state: string;
+}
+
+export type StateGroup = 'active' | 'terminal' | 'error' | 'all';

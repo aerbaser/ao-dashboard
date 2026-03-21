@@ -1,5 +1,5 @@
 // AO Dashboard — Express server (port 3333)
-// TODO: Архимед — реализуй API routes
+// Wraps task-store.js CLI per §agent-rules: DRY API, no re-implemented logic
 import express from 'express'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
@@ -10,6 +10,8 @@ const app = express()
 const PORT = process.env.PORT ?? 3333
 
 app.use(express.json())
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ao-dashboard', ts: new Date().toISOString() })

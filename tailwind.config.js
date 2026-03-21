@@ -37,6 +37,12 @@ export default {
         blue:          '#60A5FA',
         'blue-dim':    '#1E3A5F',
         'blue-subtle': 'rgba(96,165,250,0.12)',
+        accent: {
+          purple:         '#A78BFA',
+          'purple-dim':   '#4C1D95',
+          'purple-subtle':'rgba(167,139,250,0.12)',
+          amber:          '#F5A623',
+        },
         status: {
           active:   '#F5A623',
           idle:     '#A09D99',

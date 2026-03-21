@@ -7,6 +7,7 @@ import tasksRouter from './api/tasks.js'
 import statusRouter from './api/status.js'
 import rateLimitsRouter from './api/rate-limits.js'
 import agentsRouter from './api/agents.js'
+import logsRouter from './api/logs.js'
 import { getGlobalStatus } from './lib/status.js'
 import { startVitalsWorker } from './lib/vitals.js'
 
@@ -34,6 +35,9 @@ app.use('/api/status', statusRouter)
 
 app.use('/api/rate-limits', rateLimitsRouter)
 app.use('/api/agents', agentsRouter)
+app.use('/api/logs', logsRouter)
+
+
 
 // ── Global status aggregator (TTL-cached, <200ms target) ─────────────────
 
@@ -59,4 +63,14 @@ startVitalsWorker(10_000)
 
 app.listen(PORT, () => {
   console.log(`[ao-dashboard] server listening on :${PORT}`)
+})
+
+// ── Decisions + Events (delegated to logs router) ─────────────────────────────
+app.get('/api/decisions', async (req, res) => {
+  req.url = '/decisions' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')
+  logsRouter.handle(req, res, () => res.status(404).json({ error: 'not found' }))
+})
+app.get('/api/events', async (req, res) => {
+  req.url = '/events' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')
+  logsRouter.handle(req, res, () => res.status(404).json({ error: 'not found' }))
 })

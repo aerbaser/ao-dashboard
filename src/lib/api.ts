@@ -231,3 +231,50 @@ export async function moveEnvelope(agentId: string, fromFolder: string, toFolder
   });
   return res.json();
 }
+
+// ─── Logs ────────────────────────────────────────────────────────────────────
+
+export interface GatewayLogResponse {
+  lines: string[]; file_size_bytes: number; file_date: string; error?: string;
+}
+export interface WorkerFile { name: string; size_bytes: number }
+export interface WorkerListResponse { files: WorkerFile[] }
+export interface WorkerLogResponse { lines: string[]; file_size_bytes: number; file_name: string }
+export interface Decision {
+  agent?: string; task_id?: string; gate_type?: string; result?: string;
+  timestamp?: string; ts?: string; _task_dir?: string; [key: string]: unknown;
+}
+export interface LogEvent {
+  type?: string; actor?: string; agent?: string; task_id?: string;
+  timestamp?: string; ts?: string; data?: Record<string, unknown>;
+  _task_dir?: string; [key: string]: unknown;
+}
+
+export function getGatewayLog(lines = 200): Promise<GatewayLogResponse> {
+  return fetchJson<GatewayLogResponse>(`/api/logs/gateway?lines=${lines}`)
+}
+export function getWorkerList(): Promise<WorkerListResponse> {
+  return fetchJson<WorkerListResponse>('/api/logs/worker')
+}
+export function getWorkerLog(name: string, lines = 100): Promise<WorkerLogResponse> {
+  return fetchJson<WorkerLogResponse>(`/api/logs/worker/${encodeURIComponent(name)}?lines=${lines}`)
+}
+export function getDecisions(params?: { agent?: string; task_id?: string }): Promise<Decision[]> {
+  const sp = new URLSearchParams()
+  if (params?.agent) sp.set('agent', params.agent)
+  if (params?.task_id) sp.set('task_id', params.task_id)
+  const qs = sp.toString()
+  return fetchJson<Decision[]>(`/api/decisions${qs ? `?${qs}` : ''}`)
+}
+export function getLogEvents(params?: { agent?: string; task_id?: string; type?: string }): Promise<LogEvent[]> {
+  const sp = new URLSearchParams()
+  if (params?.agent) sp.set('agent', params.agent)
+  if (params?.task_id) sp.set('task_id', params.task_id)
+  if (params?.type) sp.set('type', params.type)
+  const qs = sp.toString()
+  return fetchJson<LogEvent[]>(`/api/events${qs ? `?${qs}` : ''}`)
+}
+
+// Aliases for backwards-compat with Logs components
+export { getLogEvents as getEvents }
+export type { LogEvent as Event }

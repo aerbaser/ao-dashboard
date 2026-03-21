@@ -6,6 +6,7 @@ import { join, dirname } from 'path'
 import tasksRouter from './api/tasks.js'
 import statusRouter from './api/status.js'
 import rateLimitsRouter from './api/rate-limits.js'
+import agentsRouter from './api/agents.js'
 import { getGlobalStatus } from './lib/status.js'
 import { startVitalsWorker } from './lib/vitals.js'
 
@@ -32,6 +33,7 @@ app.use('/api/status', statusRouter)
 // ── Rate-limits ──────────────────────────────────────────────────────────
 
 app.use('/api/rate-limits', rateLimitsRouter)
+app.use('/api/agents', agentsRouter)
 
 // ── Global status aggregator (TTL-cached, <200ms target) ─────────────────
 

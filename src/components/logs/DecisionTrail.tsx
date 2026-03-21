@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getDecisions, type Decision } from '../../lib/api'
+import Skeleton from '../ui/Skeleton'
+import EmptyState from '../ui/EmptyState'
 
 type SortField = 'agent' | 'task_id' | 'gate_type' | 'result' | 'timestamp'
 type SortDir = 'asc' | 'desc'
@@ -81,7 +83,11 @@ export default function DecisionTrail() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full text-text-tertiary text-sm">Loading decisions…</div>
+    return (
+      <div className="flex-1 p-3 space-y-2">
+        <Skeleton lines={5} height="24px" className="w-full" />
+      </div>
+    )
   }
   if (error) {
     return <div className="flex items-center justify-center h-full text-accent-red text-sm">{error}</div>
@@ -143,8 +149,10 @@ export default function DecisionTrail() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-text-tertiary">
-                  No decisions found
+                <td colSpan={5}>
+                  <div className="flex items-center justify-center py-8">
+                    <EmptyState icon="◇" title="No decisions recorded" />
+                  </div>
                 </td>
               </tr>
             ) : (

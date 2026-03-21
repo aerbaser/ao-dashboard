@@ -7,20 +7,26 @@ import AgentsPage from './pages/AgentsPage'
 import SystemPage from './pages/SystemPage'
 import LogsPage from './pages/LogsPage'
 import ConfigPage from './pages/ConfigPage'
+import { ToastProvider } from './hooks/useToast'
+import ErrorBoundary from './components/layout/ErrorBoundary'
+import ToastStack from './components/layout/Toast'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route element={<App />}>
-          <Route index element={<PipelinePage />} />
-          <Route path="agents" element={<AgentsPage />} />
-          <Route path="system" element={<SystemPage />} />
-          <Route path="logs" element={<LogsPage />} />
-          <Route path="config" element={<ConfigPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<App />}>
+            <Route index element={<ErrorBoundary><PipelinePage /></ErrorBoundary>} />
+            <Route path="agents" element={<ErrorBoundary><AgentsPage /></ErrorBoundary>} />
+            <Route path="system" element={<ErrorBoundary><SystemPage /></ErrorBoundary>} />
+            <Route path="logs" element={<ErrorBoundary><LogsPage /></ErrorBoundary>} />
+            <Route path="config" element={<ErrorBoundary><ConfigPage /></ErrorBoundary>} />
+          </Route>
+        </Routes>
+        <ToastStack />
+      </BrowserRouter>
+    </ToastProvider>
   </React.StrictMode>,
 )

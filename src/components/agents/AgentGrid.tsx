@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import type { AgentInfo } from '../../lib/api'
 import { fetchAgents } from '../../lib/api'
 import AgentCard from './AgentCard'
+import Skeleton from '../ui/Skeleton'
+import EmptyState from '../ui/EmptyState'
 
 interface AgentGridProps {
   onSelectAgent: (agent: AgentInfo) => void
@@ -10,6 +12,7 @@ interface AgentGridProps {
 export default function AgentGrid({ onSelectAgent }: AgentGridProps) {
   const [agents, setAgents] = useState<AgentInfo[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     try {
@@ -18,6 +21,8 @@ export default function AgentGrid({ onSelectAgent }: AgentGridProps) {
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load agents')
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -35,6 +40,22 @@ export default function AgentGrid({ onSelectAgent }: AgentGridProps) {
           Retry
         </button>
       </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-lg" />
+        ))}
+      </div>
+    )
+  }
+
+  if (agents.length === 0) {
+    return (
+      <EmptyState icon="◎" title="No agents found" description="No active agent sessions" />
     )
   }
 

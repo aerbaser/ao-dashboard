@@ -19,6 +19,8 @@ import type { Task, PipelineState, TransitionError } from '../../lib/types';
 import { MAIN_FLOW_STATES, SIDE_STATES } from '../../lib/types';
 import { transitionTask } from '../../lib/api';
 import { TaskCard } from './TaskCard';
+import Skeleton from '../ui/Skeleton';
+import EmptyState from '../ui/EmptyState';
 
 // Pipeline state color map for column headers
 const STATE_COLORS: Record<PipelineState, string> = {
@@ -47,9 +49,10 @@ interface KanbanColumnProps {
   tasks: Task[];
   onCardClick: (task: Task) => void;
   errors: Record<string, TransitionError>;
+  loading?: boolean;
 }
 
-function KanbanColumn({ state, tasks, onCardClick, errors }: KanbanColumnProps) {
+function KanbanColumn({ state, tasks, onCardClick, errors, loading }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: state });
   const color = STATE_COLORS[state];
 
@@ -80,18 +83,30 @@ function KanbanColumn({ state, tasks, onCardClick, errors }: KanbanColumnProps) 
       </div>
 
       {/* Cards */}
-      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onClick={onCardClick}
-              error={errors[task.id] || null}
-            />
-          ))}
+      {loading ? (
+        <div className="flex-1 p-2 space-y-2">
+          <Skeleton className="h-16 rounded-md" />
+          <Skeleton className="h-16 rounded-md" />
+          <Skeleton className="h-16 rounded-md" />
         </div>
-      </SortableContext>
+      ) : tasks.length === 0 ? (
+        <div className="flex-1 p-2">
+          <EmptyState icon="○" title={`No tasks in ${state}`} />
+        </div>
+      ) : (
+        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]">
+            {tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onClick={onCardClick}
+                error={errors[task.id] || null}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      )}
     </div>
   );
 }
@@ -100,9 +115,10 @@ interface KanbanBoardProps {
   tasks: Task[];
   onCardClick: (task: Task) => void;
   onRefresh: () => void;
+  loading?: boolean;
 }
 
-export function KanbanBoard({ tasks, onCardClick, onRefresh }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, TransitionError>>({});
@@ -192,6 +208,7 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh }: KanbanBoardProps)
               tasks={tasksByState(state)}
               onCardClick={onCardClick}
               errors={errors}
+              loading={loading}
             />
           ))}
         </div>

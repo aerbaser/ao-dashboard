@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import Skeleton from '../ui/Skeleton'
+import EmptyState from '../ui/EmptyState'
 
 interface LogViewerProps {
   lines: string[]
@@ -135,8 +137,8 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
           {error}
         </div>
       ) : loading && lines.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">
-          Loading logs…
+        <div className="p-3 space-y-2">
+          <Skeleton lines={8} height="16px" className="w-full" />
         </div>
       ) : (
         <div
@@ -144,6 +146,11 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
           onScroll={handleScroll}
           className="flex-1 overflow-auto font-mono text-xs"
         >
+          {filteredLines.length === 0 && !loading && !error ? (
+            <div className="flex-1 flex items-center justify-center">
+              <EmptyState icon="≡" title="No log entries" description="Nothing to show yet" />
+            </div>
+          ) : null}
           <div
             style={{
               height: `${virtualizer.getTotalSize()}px`,

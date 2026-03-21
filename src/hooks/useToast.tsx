@@ -11,9 +11,15 @@ export interface Toast {
   action?: { label: string; fn: () => void }
 }
 
+export type ToastPayload = Omit<Toast, 'id'>
+type ToastOptions = Partial<Omit<Toast, 'id' | 'message' | 'variant'>>
+
 interface ToastContextValue {
   toasts: Toast[]
-  push: (message: string, variant: ToastVariant, options?: Partial<Omit<Toast, 'id' | 'message' | 'variant'>>) => void
+  push: {
+    (toast: ToastPayload): void
+    (message: string, variant: ToastVariant, options?: ToastOptions): void
+  }
   dismiss: (id: string) => void
   dismissAll: () => void
 }
@@ -39,12 +45,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const push = useCallback((
-    message: string,
-    variant: ToastVariant,
-    options?: Partial<Omit<Toast, 'id' | 'message' | 'variant'>>
+    messageOrToast: string | ToastPayload,
+    variant?: ToastVariant,
+    options?: ToastOptions
   ) => {
     const id = `${Date.now()}-${Math.random()}`
-    const toast: Toast = { id, message, variant, dismissible: true, ...options }
+    const payload = typeof messageOrToast === 'string'
+      ? { message: messageOrToast, variant: variant!, ...options }
+      : messageOrToast
+    const toast: Toast = { id, dismissible: true, ...payload }
     setToasts((prev) => {
       const next = [...prev, toast]
       if (next.length > MAX_TOASTS) {
@@ -54,7 +63,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       }
       return next
     })
-    const delay = AUTO_DISMISS_MS[variant]
+    const delay = AUTO_DISMISS_MS[toast.variant]
     if (delay !== null) {
       const t = setTimeout(() => dismiss(id), delay)
       timers.current.set(id, t)
@@ -74,6 +83,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext)
   if (!ctx) throw new Error('useToast must be used within ToastProvider')

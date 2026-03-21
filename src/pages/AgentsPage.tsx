@@ -21,7 +21,7 @@ export default function AgentsPage() {
           <AgentDetail
             agent={selectedAgent}
             onClose={() => setSelectedAgent(null)}
-            onToast={(msg) => push(msg, 'success')}
+            onToast={(payload) => push(payload)}
           />
         </div>
       )}

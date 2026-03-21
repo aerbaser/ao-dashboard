@@ -1,33 +1,41 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react'
+
+interface UsePollingResult<T> {
+  data: T | null
+  loading: boolean
+  error: Error | null
+  refetch: () => void
+  /** alias for refetch — backward compat */
+  refresh: () => void
+}
 
 export function usePolling<T>(
   fetcher: () => Promise<T>,
-  intervalMs: number = 5000
-): { data: T | null; error: Error | null; loading: boolean; refresh: () => void } {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [loading, setLoading] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  intervalMs = 5000,
+): UsePollingResult<T> {
+  const [data, setData] = useState<T | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+  const fetcherRef = useRef(fetcher)
+  fetcherRef.current = fetcher
 
-  const doFetch = useCallback(async () => {
+  const refetch = useCallback(async () => {
     try {
-      const result = await fetcher();
-      setData(result);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      const result = await fetcherRef.current()
+      setData(result)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [fetcher]);
+  }, [])
 
   useEffect(() => {
-    doFetch();
-    timerRef.current = setInterval(doFetch, intervalMs);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [doFetch, intervalMs]);
+    refetch()
+    const id = setInterval(refetch, intervalMs)
+    return () => clearInterval(id)
+  }, [refetch, intervalMs])
 
-  return { data, error, loading, refresh: doFetch };
+  return { data, loading, error, refetch, refresh: refetch }
 }

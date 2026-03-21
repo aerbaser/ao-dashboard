@@ -56,9 +56,10 @@ async function assembleStatus() {
   ])
 
   // Extract agent stats
+  const AGENTS_TOTAL = 9  // static team size: archimedes, aristotle, brainstorm, hephaestus, herodotus, leo, platon, sokrat, sokrat-brainstorm
   const agents = dashData?.agents ?? []
   const agentsAlive = agents.filter(a => a.state === 'active' || a.state === 'idle').length
-  const agentsTotal = agents.length
+  const agentsTotal = AGENTS_TOTAL
 
   // Extract task stats from health or tasks array
   const health = dashData?.health ?? {}

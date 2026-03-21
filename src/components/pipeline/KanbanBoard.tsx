@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useToast } from '../../hooks/useToast';
 import {
   DndContext,
   DragOverlay,
@@ -120,7 +121,7 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { push: pushToast } = useToast();
   const [errors, setErrors] = useState<Record<string, TransitionError>>({});
 
   const sensors = useSensors(
@@ -154,14 +155,14 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
 
       // Show transition toast
       const label = targetState.replace(/_/g, ' ');
-      setToast(`Transitioning → ${label}...`);
+      pushToast(`Transitioning → ${label}...`, 'info');
 
       try {
         const result = await transitionTask(taskId, targetState);
         if ('error' in result) {
           // Guard violation: show inline error on card
           setErrors((prev) => ({ ...prev, [taskId]: result as TransitionError }));
-          setToast(null);
+          pushToast(`Guard violation: cannot move to ${label}`, 'error');
         } else {
           // Clear any previous error for this task
           setErrors((prev) => {
@@ -169,7 +170,7 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
             delete next[taskId];
             return next;
           });
-          setToast(null);
+          pushToast(`Moved to ${label}`, 'success');
           onRefresh();
         }
       } catch (e: unknown) {
@@ -177,7 +178,7 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
         if (err.error === 'GUARD_VIOLATION') {
           setErrors((prev) => ({ ...prev, [taskId]: err }));
         }
-        setToast(null);
+        pushToast('Transition failed', 'error');
       }
     },
     [tasks, onRefresh]
@@ -187,13 +188,6 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
 
   return (
     <div className="relative h-full">
-      {/* Toast */}
-      {toast && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-md bg-amber text-text-inverse text-sm font-semibold shadow-md animate-fade-in">
-          {toast}
-        </div>
-      )}
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

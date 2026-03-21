@@ -3,6 +3,7 @@ import type { GlobalStatus } from '../../lib/types'
 
 interface TopBarProps {
   status: GlobalStatus | null
+  onMenuToggle?: () => void
 }
 
 function StatusDot({ up }: { up: boolean }) {
@@ -39,17 +40,26 @@ function TempDisplay({ temp }: { temp: number | null }) {
   return <span className={`text-xs ${color}`}>{temp}°C</span>
 }
 
-export default function TopBar({ status }: TopBarProps) {
+export default function TopBar({ status, onMenuToggle }: TopBarProps) {
   const navigate = useNavigate()
 
   return (
     <header
-      className="h-[var(--topbar-height)] bg-bg-surface border-b border-border-subtle flex items-center px-4 gap-4 shrink-0"
+      className="h-[var(--topbar-height)] bg-bg-surface border-b border-border-subtle flex items-center px-3 gap-2 shrink-0 overflow-hidden"
     >
+      {/* Hamburger — mobile only */}
+      <button
+        onClick={onMenuToggle}
+        className="md:hidden flex items-center justify-center w-7 h-7 rounded text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors shrink-0"
+        aria-label="Toggle menu"
+      >
+        <span className="text-base leading-none">☰</span>
+      </button>
+
       {/* Gateway */}
       <button
         onClick={() => navigate('/system')}
-        className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors"
+        className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors shrink-0"
       >
         <StatusDot up={status?.gateway_up ?? false} />
         <span className="text-xs text-text-secondary">GW</span>
@@ -58,7 +68,7 @@ export default function TopBar({ status }: TopBarProps) {
       {/* Agents */}
       <button
         onClick={() => navigate('/agents')}
-        className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors"
+        className="hidden sm:flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors shrink-0"
       >
         <span className="text-xs text-text-secondary">
           Agents {status ? `${status.agents_alive}/${status.agents_total}` : '—'}
@@ -68,7 +78,7 @@ export default function TopBar({ status }: TopBarProps) {
       {/* Active tasks */}
       <button
         onClick={() => navigate('/')}
-        className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors"
+        className="hidden sm:flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors shrink-0"
       >
         <span className="text-xs text-text-secondary">
           Active {status?.active_tasks ?? '—'}
@@ -78,7 +88,7 @@ export default function TopBar({ status }: TopBarProps) {
       {/* Blocked tasks */}
       <button
         onClick={() => navigate('/')}
-        className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors"
+        className="hidden sm:flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors shrink-0"
       >
         <span
           className={`text-xs ${
@@ -94,7 +104,7 @@ export default function TopBar({ status }: TopBarProps) {
       {/* CPU */}
       <button
         onClick={() => navigate('/system')}
-        className="flex items-center gap-2 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors"
+        className="hidden md:flex items-center gap-2 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors shrink-0"
       >
         <span className="text-xs text-text-secondary">
           CPU {status?.cpu_percent != null ? `${status.cpu_percent}%` : '—'}
@@ -105,7 +115,7 @@ export default function TopBar({ status }: TopBarProps) {
       {/* Usage bars */}
       <button
         onClick={() => navigate('/config')}
-        className="flex items-center gap-3 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors"
+        className="hidden lg:flex items-center gap-3 hover:bg-bg-hover rounded px-1.5 py-1 transition-colors shrink-0"
       >
         <UsageBar label="Claude" percent={status?.claude_usage_percent ?? null} />
         <UsageBar label="Codex" percent={status?.codex_usage_percent ?? null} />

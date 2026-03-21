@@ -2,5 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens applied by Архимед based on:
-   ~/.openclaw/workspace-leo/projects/ao-dashboard/design-tokens.json */
+body {
+  margin: 0;
+  background: #111110;
+  color: #F2F0ED;
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Markdown prose styling for react-markdown */
+.prose h1 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; color: #F2F0ED; }
+.prose h2 { font-size: 18px; font-weight: 600; margin: 14px 0 6px; color: #F2F0ED; }
+.prose h3 { font-size: 16px; font-weight: 600; margin: 12px 0 4px; color: #F2F0ED; }
+.prose p { margin: 6px 0; color: #A09D99; }
+.prose a { color: #60A5FA; text-decoration: underline; }
+.prose ul, .prose ol { padding-left: 20px; margin: 6px 0; color: #A09D99; }
+.prose li { margin: 2px 0; }
+.prose code { font-family: 'Geist Mono', 'JetBrains Mono', monospace; background: #1A1916; padding: 1px 4px; border-radius: 4px; font-size: 12px; }
+.prose pre { background: #0C0B0A; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
+.prose pre code { background: none; padding: 0; }
+.prose table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.prose th, .prose td { border: 1px solid rgba(255,255,255,0.10); padding: 6px 10px; text-align: left; font-size: 12px; }
+.prose th { background: #1A1916; color: #F2F0ED; font-weight: 600; }
+.prose td { color: #A09D99; }
+.prose strong { color: #F2F0ED; }
+.prose blockquote { border-left: 3px solid #F5A623; padding-left: 12px; margin: 8px 0; color: #6B6865; }
+.prose hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 12px 0; }

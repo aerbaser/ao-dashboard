@@ -1,8 +1,10 @@
 // AO Dashboard — Express server (port 3333)
-// TODO: Архимед — реализуй API routes
 import express from 'express'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
+import configRouter from './api/config.js'
+import skillsRouter from './api/skills.js'
+import memoryRouter from './api/memory.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -13,6 +15,10 @@ app.use(express.json())
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ao-dashboard', ts: new Date().toISOString() })
 })
+
+app.use('/api/config', configRouter)
+app.use('/api/skills', skillsRouter)
+app.use('/api/memory', memoryRouter)
 
 // Static client (prod)
 app.use(express.static(join(__dirname, '../dist/client')))

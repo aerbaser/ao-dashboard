@@ -6,7 +6,7 @@ import { homedir } from 'os'
 const router = Router()
 
 const OPENCLAW_DIR = '/tmp/openclaw'
-const TASKS_DIR = join(homedir(), 'clawd/tasks/active')
+const TASKS_DIR = join(homedir(), 'clawd/tasks')
 
 /**
  * Compute today's date string in Lisbon timezone (YYYY-MM-DD).
@@ -149,10 +149,17 @@ router.get('/worker/:name', async (req, res) => {
   }
 })
 
+// Skip non-task dirs when iterating clawd/tasks
+const NON_TASK_DIRS = new Set(['active', 'archive', 'config', 'metrics', 'templates'])
+
+function isTaskDir(name) {
+  return name.startsWith('tsk_') && !NON_TASK_DIRS.has(name)
+}
+
 // GET /api/decisions — aggregate decision-log.jsonl across all task dirs
 router.get('/decisions', async (req, res) => {
   try {
-    const taskDirs = await listDirs(TASKS_DIR)
+    const taskDirs = (await listDirs(TASKS_DIR)).filter(isTaskDir)
     const allDecisions = []
 
     for (const dir of taskDirs) {
@@ -188,7 +195,7 @@ router.get('/decisions', async (req, res) => {
 // GET /api/events — aggregate events.ndjson across all task dirs
 router.get('/events', async (req, res) => {
   try {
-    const taskDirs = await listDirs(TASKS_DIR)
+    const taskDirs = (await listDirs(TASKS_DIR)).filter(isTaskDir)
     const allEvents = []
 
     for (const dir of taskDirs) {
@@ -208,7 +215,8 @@ router.get('/events', async (req, res) => {
       filtered = filtered.filter((e) => e.task_id === req.query.task_id)
     }
     if (req.query.type) {
-      filtered = filtered.filter((e) => e.type === req.query.type)
+      // match both 'type' and 'event_type' fields
+      filtered = filtered.filter((e) => e.type === req.query.type || e.event_type === req.query.type)
     }
 
     // Sort by timestamp descending

@@ -80,17 +80,26 @@ async function assembleStatus() {
     // not available or no failures
   }
 
-  // Claude/Codex usage — read from status files if available
+  // Claude/Codex usage — read from rate-limit-cache.json (written by gateway on each API call)
   let claudeUsagePercent = null
   let codexUsagePercent = null
   try {
-    const ratesPath = join(homedir(), 'clawd/memory/rate-limits.json')
-    const ratesRaw = await readFile(ratesPath, 'utf-8')
-    const rates = JSON.parse(ratesRaw)
-    claudeUsagePercent = rates.claude_usage_percent ?? null
-    codexUsagePercent = rates.codex_usage_percent ?? null
+    const cachePath = join(homedir(), 'clawd/runtime/rate-limit-cache.json')
+    const cacheRaw = await readFile(cachePath, 'utf-8')
+    const cache = JSON.parse(cacheRaw)
+    const profiles = Array.isArray(cache.profiles) ? cache.profiles : []
+    // Yura profile = primary Claude usage
+    const yura = profiles.find((p) => p.profile === 'yura')
+    if (yura && yura.tokens_limit > 0) {
+      claudeUsagePercent = Math.round((yura.tokens_used / yura.tokens_limit) * 100)
+    }
+    // Codex profile
+    const codex = profiles.find((p) => p.profile === 'codex')
+    if (codex && codex.tokens_limit > 0) {
+      codexUsagePercent = Math.round((codex.tokens_used / codex.tokens_limit) * 100)
+    }
   } catch {
-    // not available
+    // cache not available — return null (UI shows '—')
   }
 
   const result = {

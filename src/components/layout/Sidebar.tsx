@@ -110,7 +110,7 @@ export default function Sidebar({ status, onClose }: SidebarProps) {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-200 border-l-2 ${
                 isActive
-                  ? 'bg-[#1f1a0a] border-amber text-amber'
+                  ? 'bg-bg-active border-amber text-amber'
                   : 'border-transparent text-text-secondary hover:bg-bg-hover hover:text-text-primary'
               }`
             }

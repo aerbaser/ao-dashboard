@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export interface Shortcut {
@@ -11,6 +11,7 @@ export function useKeyboardShortcuts() {
   const navigate = useNavigate()
   const [showHelp, setShowHelp] = useState(false)
   const [pendingG, setPendingG] = useState(false)
+  const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const shortcuts: Shortcut[] = [
     { keys: 'g p', description: 'Go to Pipeline', action: () => navigate('/') },
@@ -23,7 +24,6 @@ export function useKeyboardShortcuts() {
   ]
 
   const handleKey = useCallback((e: KeyboardEvent) => {
-    // Ignore when typing in input/textarea/select
     const tag = (e.target as HTMLElement)?.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
@@ -41,6 +41,7 @@ export function useKeyboardShortcuts() {
 
     if (pendingG) {
       setPendingG(false)
+      if (gTimerRef.current) { clearTimeout(gTimerRef.current); gTimerRef.current = null }
       const map: Record<string, string> = { p: '/', a: '/agents', s: '/system', l: '/logs', c: '/config' }
       if (map[e.key]) {
         e.preventDefault()
@@ -51,8 +52,8 @@ export function useKeyboardShortcuts() {
 
     if (e.key === 'g') {
       setPendingG(true)
-      // Reset after 1s if no second key
-      setTimeout(() => setPendingG(false), 1000)
+      if (gTimerRef.current) clearTimeout(gTimerRef.current)
+      gTimerRef.current = setTimeout(() => { setPendingG(false); gTimerRef.current = null }, 1000)
       return
     }
   }, [pendingG, navigate])
@@ -61,6 +62,11 @@ export function useKeyboardShortcuts() {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [handleKey])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (gTimerRef.current) clearTimeout(gTimerRef.current) }
+  }, [])
 
   return { showHelp, setShowHelp, shortcuts }
 }

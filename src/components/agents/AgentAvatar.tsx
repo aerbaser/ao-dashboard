@@ -2,7 +2,8 @@
  * AgentAvatar — 40px circle with colored background, centered initial, status dot overlay.
  */
 
-// Agent-specific background colors (from Leo's design spec)
+// Agent-specific identity colors — intentionally hardcoded per Leo's design spec.
+// These are unique per-agent brand colors, not part of the reusable design token system.
 const AGENT_COLORS: Record<string, string> = {
   sokrat:    '#3B82F6', // blue
   archimedes:'#F97316', // orange

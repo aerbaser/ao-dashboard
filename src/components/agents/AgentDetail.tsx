@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { AgentInfo } from '../../lib/api'
 import { fetchAgentInboxMd, fetchAgentLog, fetchAgentEvents, sendAgentMessage, wakeAgent } from '../../lib/api'
+import AgentAvatar from './AgentAvatar'
 import MailboxViewer from './MailboxViewer'
 import type { ToastPayload } from '../../hooks/useToast'
 
@@ -58,7 +59,7 @@ export default function AgentDetail({ agent, onClose, onToast }: AgentDetailProp
       <div className="fixed top-0 right-0 h-full w-[420px] max-w-full bg-bg-elevated border-l border-border-subtle z-50 flex flex-col animate-slide-in-right shadow-lg">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle shrink-0">
-          <span className="text-2xl">{agent.emoji}</span>
+          <AgentAvatar name={agent.name} id={agent.id} status={agent.status} size={36} />
           <div className="flex-1 min-w-0">
             <div className="font-medium text-text-primary">{agent.name}</div>
             <div className="text-[11px] text-text-tertiary">{agent.role} · {agent.status}</div>

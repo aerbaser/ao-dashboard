@@ -21,6 +21,13 @@ function serviceStatusClass(status: string) {
   return STATUS_STYLES[status] ?? 'bg-bg-overlay text-text-secondary border-border-default'
 }
 
+function getActions(service: ServiceInfo): ('start' | 'stop' | 'restart')[] {
+  if (service.forbidden) return []
+  if (service.status === 'active') return ['restart', 'stop']
+  if (service.status === 'inactive' || service.status === 'failed') return ['start']
+  return ['restart', 'stop', 'start'] // transitional states — show all
+}
+
 export default function ServicesGrid({ services, loading, onAction }: ServicesGridProps) {
   if (loading && services.length === 0) {
     return (
@@ -42,7 +49,12 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       {GROUPS.map((group) => {
-        const items = services.filter((service) => service.group === group)
+        const all = services.filter((s) => s.group === group)
+        // Sort: active first, inactive/failed at bottom
+        const items = [...all].sort((a, b) => {
+          const rank = (s: string) => s === 'active' ? 0 : s === 'activating' ? 1 : s === 'failed' ? 2 : 3
+          return rank(a.status) - rank(b.status)
+        })
         return (
           <section key={group} className="rounded-lg border border-border-subtle bg-bg-surface p-4 shadow-panel">
             <div className="mb-3 flex items-center justify-between">
@@ -55,64 +67,72 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
               {items.length === 0 && (
                 <EmptyState icon="○" title={`No ${group} services`} />
               )}
-              {items.map((service) => (
-                <article
-                  key={service.name}
-                  className={`rounded-md border p-3 transition-colors ${
-                    service.forbidden ? 'opacity-60 border-border-default bg-bg-elevated' :
-                    service.status === 'active' ? 'border-emerald/20 bg-bg-elevated hover:bg-bg-hover animate-pulse-healthy' :
-                    service.status === 'failed' ? 'border-red/30 bg-bg-elevated animate-pulse-critical' :
-                    'border-border-default bg-bg-elevated hover:bg-bg-hover'
-                  }`}
-                >
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-text-primary">{service.display_name}</h3>
-                        {service.forbidden && <span title="Forbidden service">🚫</span>}
+              {items.map((service) => {
+                const isInactive = service.status === 'inactive'
+                const isFailed = service.status === 'failed'
+                const actions = getActions(service)
+
+                return (
+                  <article
+                    key={service.name}
+                    className={`group rounded-md border p-3 transition-colors ${
+                      service.forbidden ? 'opacity-50 border-border-default bg-bg-void' :
+                      isInactive ? 'opacity-60 border-l-2 border-l-red/40 border-border-default bg-bg-void' :
+                      isFailed ? 'border-red/30 bg-bg-elevated animate-pulse-critical' :
+                      service.status === 'active' ? 'border-emerald/20 bg-bg-elevated hover:bg-bg-hover animate-pulse-healthy' :
+                      'border-border-default bg-bg-elevated hover:bg-bg-hover'
+                    }`}
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-text-primary truncate" title={service.display_name}>{service.display_name}</h3>
+                          {service.forbidden && <span title="Forbidden service">🚫</span>}
+                        </div>
+                        <p className="mt-1 font-mono text-xs text-text-tertiary truncate" title={service.name}>{service.name}</p>
                       </div>
-                      <p className="mt-1 font-mono text-xs text-text-tertiary">{service.name}</p>
+                      <span className={`shrink-0 rounded border px-2 py-1 font-mono text-xs ${serviceStatusClass(service.status)}`} style={{ borderRadius: '4px' }}>
+                        {service.status}
+                      </span>
                     </div>
-                    <span className={`rounded-sm border px-2 py-1 font-mono text-xs ${serviceStatusClass(service.status)}`}>
-                      {service.status}
-                    </span>
-                  </div>
 
-                  <dl className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Uptime</dt>
-                      <dd className="font-mono text-text-secondary">{service.uptime ?? '—'}</dd>
-                    </div>
-                    <div>
-                      <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Memory</dt>
-                      <dd className="font-mono text-text-secondary">{service.memory_mb != null ? `${service.memory_mb} MB` : '—'}</dd>
-                    </div>
-                  </dl>
+                    <dl className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Uptime</dt>
+                        <dd className="font-mono text-text-secondary">{service.uptime ?? '—'}</dd>
+                      </div>
+                      <div>
+                        <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Memory</dt>
+                        <dd className="font-mono text-text-secondary">{service.memory_mb != null ? `${service.memory_mb} MB` : '—'}</dd>
+                      </div>
+                    </dl>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {(['restart', 'stop', 'start'] as const).map((action) => {
-                      const disabled = service.forbidden
-                      const needsConfirm = action === 'stop' || action === 'restart'
-                      return (
-                        <button
-                          key={action}
-                          type="button"
-                          disabled={disabled}
-                          aria-label={`${action} ${service.display_name}`}
-                          onClick={() => {
-                            if (disabled) return
-                            if (needsConfirm && !window.confirm(`${action} ${service.display_name}?`)) return
-                            void onAction(service, action)
-                          }}
-                          className="rounded-sm border border-border-subtle px-3 py-1.5 font-mono text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:text-text-disabled"
-                        >
-                          {action}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </article>
-              ))}
+                    {/* Action buttons — contextual, hover-only */}
+                    {actions.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {actions.map((action) => {
+                          const needsConfirm = action === 'stop' || action === 'restart'
+                          return (
+                            <button
+                              key={action}
+                              type="button"
+                              aria-label={`${action} ${service.display_name}`}
+                              onClick={() => {
+                                if (needsConfirm && !window.confirm(`${action} ${service.display_name}?`)) return
+                                void onAction(service, action)
+                              }}
+                              className="rounded border border-border-subtle px-3 py-1 font-mono text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                              style={{ borderRadius: '4px' }}
+                            >
+                              {action}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </article>
+                )
+              })}
             </div>
           </section>
         )

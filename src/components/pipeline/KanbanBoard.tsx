@@ -61,10 +61,12 @@ function KanbanColumn({ state, tasks, onCardClick, errors, loading }: KanbanColu
     <div
       ref={setNodeRef}
       className={`
-        flex-shrink-0 w-[260px] flex flex-col rounded-lg
+        flex-shrink-0 w-[260px] flex flex-col rounded-lg border-t-2
         ${isOver ? 'bg-bg-overlay' : 'bg-bg-void'}
+        ${tasks.length === 0 && !loading ? 'opacity-50' : ''}
         transition-colors duration-100
       `}
+      style={{ borderTopColor: color }}
     >
       {/* Column header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle">
@@ -117,9 +119,10 @@ interface KanbanBoardProps {
   onCardClick: (task: Task) => void;
   onRefresh: () => void;
   loading?: boolean;
+  hideEmpty?: boolean;
 }
 
-export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onCardClick, onRefresh, loading, hideEmpty }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const [errors, setErrors] = useState<Record<string, TransitionError>>({});
@@ -187,6 +190,9 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
   );
 
   const allStates: PipelineState[] = [...MAIN_FLOW_STATES, ...SIDE_STATES];
+  const visibleStates = hideEmpty
+    ? allStates.filter((s) => tasksByState(s).length > 0)
+    : allStates;
 
   return (
     <div className="relative h-full">
@@ -197,7 +203,7 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading }: KanbanBo
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-3 h-full overflow-x-auto pb-3 px-1">
-          {allStates.map((state) => (
+          {visibleStates.map((state) => (
             <KanbanColumn
               key={state}
               state={state}

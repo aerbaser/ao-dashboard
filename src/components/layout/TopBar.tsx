@@ -56,7 +56,7 @@ function TempDisplay({ temp }: { temp: number | null }) {
   if (temp === null) return null
   const color =
     temp > 85 ? 'text-red' : temp > 70 ? 'text-amber' : 'text-text-secondary'
-  return <span className={`text-xs font-mono ${color}`}>{temp}°C</span>
+  return <span className={`text-xs font-mono ${color}`} title={`CPU temperature: ${temp}°C`}>CPU {temp}°C</span>
 }
 
 export default function TopBar({ status, onMenuToggle }: TopBarProps) {

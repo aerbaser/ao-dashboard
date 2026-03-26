@@ -42,10 +42,12 @@ export default function UsageTracker({ data, loading, onSwitchProfile }: UsageTr
     return <div className="rounded-lg border border-border-subtle bg-bg-surface p-6 text-sm text-text-tertiary">Loading usage data…</div>
   }
 
-  if (!data || data.profiles.length === 0 || !data.cached) {
+  if (!data || data.profiles.length === 0) {
+    // Suppress raw error — show graceful empty state
     return (
-      <div className="rounded-lg border border-border-subtle bg-bg-surface p-6 text-sm text-text-tertiary">
-        Rate-limit cache unavailable.
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-text-disabled shrink-0" />
+        <span className="text-xs text-text-tertiary">Usage data not yet available</span>
       </div>
     )
   }

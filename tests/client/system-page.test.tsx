@@ -39,7 +39,10 @@ describe('System components', () => {
 
     expect(screen.getByText('Core')).toBeInTheDocument()
     expect(screen.getByText('OpenClaw Gateway')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /restart openclaw gateway/i })).toBeDisabled()
+    // Forbidden services no longer render action buttons at all (not disabled — absent)
+    expect(screen.queryByRole('button', { name: /restart openclaw gateway/i })).toBeNull()
+    // Active non-forbidden service should have contextual buttons (restart, stop)
+    expect(screen.getByRole('button', { name: /restart dashboard server/i })).toBeInTheDocument()
   })
 
   it('renders a 16-cell cpu heatmap', () => {

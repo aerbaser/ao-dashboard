@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Task, PipelineState, StateGroup } from '../lib/types';
 import {
   ERROR_STATES,
@@ -11,6 +11,19 @@ import { fetchTasks, createTask } from '../lib/api';
 import { usePolling } from '../hooks/usePolling';
 import { KanbanBoard } from '../components/pipeline/KanbanBoard';
 import { TaskDetail } from '../components/pipeline/TaskDetail';
+
+// ─── Freshness Indicator ──────────────────────────────────────────────────────
+
+function Freshness({ ts }: { ts: number }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const seconds = Math.max(0, Math.floor((now - ts) / 1000))
+  const label = seconds < 5 ? 'just now' : seconds < 60 ? `${seconds}s ago` : `${Math.floor(seconds / 60)}m ago`
+  return <span className="ml-3 text-[11px] font-mono text-text-disabled">Updated {label}</span>
+}
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
@@ -218,16 +231,19 @@ export function Pipeline() {
     route: '',
     stateGroup: 'all',
   });
+  const [hideEmpty, setHideEmpty] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
 
   const allOwners = useMemo(() => {
     if (!tasks) return [];
     return [...new Set(tasks.map((t) => t.owner))].sort();
   }, [tasks]);
 
-  const filteredTasks = useMemo(
-    () => filterTasks(tasks || [], filters),
-    [tasks, filters]
-  );
+  const filteredTasks = useMemo(() => {
+    const result = filterTasks(tasks || [], filters);
+    setLastUpdated(Date.now());
+    return result;
+  }, [tasks, filters]);
 
   const handleCardClick = useCallback((task: Task) => {
     setSelectedTask(task);
@@ -255,6 +271,16 @@ export function Pipeline() {
             {tasks.length} tasks
           </span>
         )}
+        <Freshness ts={lastUpdated} />
+        <label className="ml-auto flex items-center gap-1.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={hideEmpty}
+            onChange={(e) => setHideEmpty(e.target.checked)}
+            className="accent-amber w-3 h-3"
+          />
+          <span className="text-xs text-text-tertiary">Hide empty</span>
+        </label>
       </header>
 
       {/* Filter bar */}
@@ -271,6 +297,7 @@ export function Pipeline() {
           tasks={filteredTasks}
           onCardClick={handleCardClick}
           onRefresh={refresh}
+          hideEmpty={hideEmpty}
         />
       </div>
 

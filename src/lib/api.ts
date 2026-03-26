@@ -21,15 +21,30 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     ...opts,
   });
-  const data = await res.json();
+  const text = await res.text();
+  let data: T;
+  try {
+    data = JSON.parse(text) as T;
+  } catch {
+    throw new Error(`API ${path}: expected JSON but got HTML/text (status ${res.status})`);
+  }
   if (!res.ok) throw data;
-  return data as T;
+  return data;
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
-  return res.json();
+  if (!res.ok) {
+    // Try to parse error body, fallback to status code
+    const body = await res.text().catch(() => '');
+    throw new Error(`API ${path}: ${res.status}${body.startsWith('{') ? ' — ' + body.slice(0, 100) : ''}`);
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`API ${path}: expected JSON but got non-JSON response`);
+  }
 }
 
 // ─── GlobalStatus ─────────────────────────────────────────────────────────────

@@ -78,11 +78,11 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
                   <dl className="grid grid-cols-2 gap-3 text-xs">
                     <div>
                       <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Uptime</dt>
-                      <dd className="text-text-secondary">{service.uptime}</dd>
+                      <dd className="text-text-secondary">{service.uptime ?? '—'}</dd>
                     </div>
                     <div>
                       <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Memory</dt>
-                      <dd className="text-text-secondary">{service.memory_mb} MB</dd>
+                      <dd className="text-text-secondary">{service.memory_mb != null ? `${service.memory_mb} MB` : '—'}</dd>
                     </div>
                   </dl>
 

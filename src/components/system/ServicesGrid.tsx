@@ -58,8 +58,11 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
               {items.map((service) => (
                 <article
                   key={service.name}
-                  className={`rounded-md border border-border-default bg-bg-elevated p-3 transition-colors ${
-                    service.forbidden ? 'opacity-60' : 'hover:bg-bg-hover'
+                  className={`rounded-md border p-3 transition-colors ${
+                    service.forbidden ? 'opacity-60 border-border-default bg-bg-elevated' :
+                    service.status === 'active' ? 'border-emerald/20 bg-bg-elevated hover:bg-bg-hover animate-pulse-healthy' :
+                    service.status === 'failed' ? 'border-red/30 bg-bg-elevated animate-pulse-critical' :
+                    'border-border-default bg-bg-elevated hover:bg-bg-hover'
                   }`}
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
@@ -78,11 +81,11 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
                   <dl className="grid grid-cols-2 gap-3 text-xs">
                     <div>
                       <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Uptime</dt>
-                      <dd className="text-text-secondary">{service.uptime ?? '—'}</dd>
+                      <dd className="font-mono text-text-secondary">{service.uptime ?? '—'}</dd>
                     </div>
                     <div>
                       <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Memory</dt>
-                      <dd className="text-text-secondary">{service.memory_mb != null ? `${service.memory_mb} MB` : '—'}</dd>
+                      <dd className="font-mono text-text-secondary">{service.memory_mb != null ? `${service.memory_mb} MB` : '—'}</dd>
                     </div>
                   </dl>
 

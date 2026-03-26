@@ -1,5 +1,6 @@
 import type { AgentInfo } from '../../lib/api'
 import AgentAvatar from './AgentAvatar'
+import CopyButton from '../ui/CopyButton'
 
 function relativeTime(isoString: string | null): string {
   if (!isoString) return 'No heartbeat'
@@ -52,8 +53,9 @@ export default function AgentCard({ agent, onClick }: AgentCardProps) {
             </div>
 
             {agent.current_task_id && (
-              <div className="text-[11px] font-mono text-text-tertiary truncate">
-                {agent.current_task_id}
+              <div className="text-[11px] font-mono text-text-tertiary truncate flex items-center gap-1">
+                <span className="truncate">{agent.current_task_id}</span>
+                <CopyButton text={agent.current_task_id} className="shrink-0" />
               </div>
             )}
 

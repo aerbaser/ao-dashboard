@@ -12,6 +12,7 @@ export default {
           elevated: '#222120',
           overlay:  '#2A2927',
           hover:    '#302F2D',
+          active:   '#1f1a0a', // warm amber tint for active nav state
         },
         border: {
           subtle:  'rgba(255,255,255,0.07)',

@@ -73,6 +73,12 @@ app.get('/api/events', (req, res) => {
   logsRouter.handle(req, res, () => res.status(404).json({ error: 'not found' }))
 })
 
+// ── Catch-all JSON 404 for unknown /api/* paths ─────────────────────────
+
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'API endpoint not found', path: _req.originalUrl })
+})
+
 // ── Static client (prod) ─────────────────────────────────────────────────
 
 app.use(express.static(join(__dirname, '../dist/client')))

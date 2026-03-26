@@ -175,7 +175,7 @@ export default function CronCalendar({ entries, loading, saving = false, onEntri
                 return (
                   <div
                     key={`${hour}-${dayIndex}-h`}
-                    className={`absolute inset-0 flex items-center justify-center cursor-pointer ${
+                    className={`flex items-center justify-center cursor-pointer ${
                       primaryGroup === 'AO Pipeline' ? 'bg-amber-subtle' :
                       primaryGroup === 'Maintenance' ? 'bg-blue-subtle' :
                       primaryGroup === 'Sync' ? 'bg-emerald-subtle' : 'bg-bg-overlay'

@@ -1,29 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
+import CopyButton from '../ui/CopyButton'
 
 const SECTION_ORDER = ['agents', 'auth', 'memory', 'session', 'gateway', 'models', 'tools', 'hooks', 'channels', 'bindings', 'commands', 'skills', 'plugins', 'browser', 'meta', 'wizard']
 
 function isRedacted(value: unknown): boolean {
   return value === '••••••••'
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
-  return (
-    <button
-      onClick={handleCopy}
-      className="opacity-0 group-hover/val:opacity-100 ml-1 px-1 text-text-disabled hover:text-text-secondary transition-opacity"
-      title="Copy to clipboard"
-    >
-      {copied ? '✓' : '⎘'}
-    </button>
-  )
 }
 
 function ValueDisplay({ value }: { value: unknown }) {
@@ -39,7 +20,10 @@ function ValueDisplay({ value }: { value: unknown }) {
   if (typeof value === 'number') {
     return <span className="text-amber font-mono text-sm">{value}</span>
   }
-  return <span className="text-text-primary font-mono text-sm break-all">{String(value)}</span>
+  // Strings: emerald for short values, primary for long paths/URLs
+  const str = String(value)
+  const color = str.length > 80 ? 'text-text-primary' : 'text-emerald'
+  return <span className={`${color} font-mono text-sm break-all`}>{str}</span>
 }
 
 function ConfigValue({ label, value, searchMatch }: { label: string; value: unknown; searchMatch?: boolean }) {
@@ -47,7 +31,7 @@ function ConfigValue({ label, value, searchMatch }: { label: string; value: unkn
 
   if (isRedacted(value)) {
     return (
-      <div className="flex items-center gap-2 py-1 group/val">
+      <div className="flex items-center gap-2 py-1 group">
         <span className="text-text-secondary text-sm min-w-[180px] font-mono shrink-0">{label}</span>
         <span className="text-text-tertiary text-sm font-mono flex items-center gap-1">
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
@@ -65,7 +49,7 @@ function ConfigValue({ label, value, searchMatch }: { label: string; value: unkn
 
   if (Array.isArray(value)) {
     return (
-      <div className={`flex items-start gap-2 py-1 group/val ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
+      <div className={`flex items-start gap-2 py-1 group ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
         <span className="text-text-secondary text-sm min-w-[180px] font-mono shrink-0">{label}</span>
         <div className="flex flex-wrap gap-1 min-w-0">
           {value.map((item, i) => (
@@ -80,7 +64,7 @@ function ConfigValue({ label, value, searchMatch }: { label: string; value: unkn
   }
 
   return (
-    <div className={`flex items-center gap-2 py-1 group/val ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
+    <div className={`flex items-center gap-2 py-1 group ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
       <span className="text-text-secondary text-sm min-w-[180px] font-mono shrink-0">{label}</span>
       <ValueDisplay value={value} />
       <CopyButton text={String(value)} />

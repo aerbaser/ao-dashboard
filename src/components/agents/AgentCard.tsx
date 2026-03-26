@@ -1,4 +1,5 @@
 import type { AgentInfo } from '../../lib/api'
+import AgentAvatar from './AgentAvatar'
 
 function relativeTime(isoString: string | null): string {
   if (!isoString) return 'No heartbeat'
@@ -35,7 +36,7 @@ export default function AgentCard({ agent, onClick }: AgentCardProps) {
       className="w-full text-left bg-bg-surface border border-border-default rounded-md p-3 hover:bg-bg-elevated transition-colors duration-100 focus:outline-none focus:ring-1 focus:ring-accent-amber/40"
     >
       <div className="flex items-start gap-3">
-        <span className="text-[32px] leading-none shrink-0">{agent.emoji}</span>
+        <AgentAvatar name={agent.name} id={agent.id} status={agent.status} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-text-primary truncate">{agent.name}</span>

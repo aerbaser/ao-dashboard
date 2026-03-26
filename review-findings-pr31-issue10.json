@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "task_id": "tsk_20260320_e717ef",
+  "issue_id": "gh_10",
+  "pr": 31,
+  "reviewer": "archimedes",
+  "verdict": "approve",
+  "findings": [],
+  "verified": [
+    { "check": "ToastPayload type propagated to AgentDetail + MailboxViewer", "result": "✅" },
+    { "check": "KanbanBoard: push({ message, variant }) on guard, success, error", "result": "✅" },
+    { "check": "useToast: overload supports string+variant AND ToastPayload object", "result": "✅" },
+    { "check": "tests/client/review-fix-m002.test.tsx added", "result": "✅" },
+    { "check": "0 hardcoded hex colors in changed files", "result": "✅" },
+    { "check": "build: 0 TS errors, 2.19s", "result": "✅" },
+    { "check": "rebase conflict resolution: responsive layout preserved from PR#32", "result": "✅" }
+  ],
+  "reviewed_at": "2026-03-21T15:35:00Z"
+}

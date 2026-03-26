@@ -239,11 +239,15 @@ export function Pipeline() {
     return [...new Set(tasks.map((t) => t.owner))].sort();
   }, [tasks]);
 
-  const filteredTasks = useMemo(() => {
-    const result = filterTasks(tasks || [], filters);
-    setLastUpdated(Date.now());
-    return result;
-  }, [tasks, filters]);
+  const filteredTasks = useMemo(
+    () => filterTasks(tasks || [], filters),
+    [tasks, filters]
+  );
+
+  // Update freshness timestamp when tasks data changes
+  useEffect(() => {
+    if (tasks) setLastUpdated(Date.now());
+  }, [tasks]);
 
   const handleCardClick = useCallback((task: Task) => {
     setSelectedTask(task);

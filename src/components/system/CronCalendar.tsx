@@ -4,12 +4,7 @@ import type { CronEntry } from '../../lib/types'
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 const ROW_HEIGHT = 56
-const GROUP_STYLES: Record<string, string> = {
-  'AO Pipeline': 'border-amber/40 bg-amber-subtle text-amber',
-  Maintenance: 'border-blue/40 bg-blue-subtle text-blue',
-  Sync: 'border-emerald/40 bg-emerald-subtle text-emerald',
-  Other: 'border-border-default bg-bg-overlay text-text-secondary',
-}
+
 
 interface CalendarBlock {
   key: string
@@ -103,10 +98,6 @@ function updateSchedule(entry: CronEntry, updates: { day?: number; hour?: number
   }
 }
 
-function toneClass(group: string) {
-  return GROUP_STYLES[group] ?? GROUP_STYLES.Other
-}
-
 export default function CronCalendar({ entries, loading, saving = false, onEntriesChange }: CronCalendarProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<CronEntry | null>(null)
@@ -171,30 +162,40 @@ export default function CronCalendar({ entries, loading, saving = false, onEntri
             </div>
           ))}
 
-          <div className="pointer-events-none col-start-2 col-end-9 row-start-2 row-end-[26] grid grid-cols-7">
-            {DAYS.map((_, dayIndex) => (
-              <div key={dayIndex} className="relative">
-                {blocks
-                  .filter((block) => block.day === dayIndex)
-                  .map((block) => (
-                    <button
-                      key={block.key}
-                      type="button"
-                      draggable
-                      onDragStart={(event) => event.dataTransfer.setData('text/plain', block.entryId)}
-                      onClick={() => setSelectedId(block.entryId)}
-                      className={`pointer-events-auto absolute left-2 right-2 rounded-md border px-2 py-1 text-left shadow-sm transition-transform hover:scale-[1.01] ${toneClass(block.group)}`}
-                      style={{ top: `${block.hour * ROW_HEIGHT + (block.minute / 60) * ROW_HEIGHT + 4}px` }}
-                    >
-                      <span className="block truncate font-mono text-[11px]">
-                        {block.hour.toString().padStart(2, '0')}:{block.minute.toString().padStart(2, '0')}
-                      </span>
-                      <span className="mt-1 block truncate text-xs font-medium">{block.label}</span>
-                    </button>
-                  ))}
-              </div>
-            ))}
-          </div>
+          {/* Heatmap overlay — colored cells instead of individual button elements */}
+          {HOURS.map((hour) => (
+            <div key={`overlay-${hour}`} className="contents">
+              <div className="hidden" /> {/* skip time label column */}
+              {DAYS.map((_, dayIndex) => {
+                const cellBlocks = blocks.filter((b) => b.day === dayIndex && b.hour === hour)
+                if (cellBlocks.length === 0) return <div key={`${hour}-${dayIndex}-e`} className="hidden" />
+                // Group labels for tooltip
+                const labels = [...new Set(cellBlocks.map((b) => b.label))].join(', ')
+                const primaryGroup = cellBlocks[0].group
+                return (
+                  <div
+                    key={`${hour}-${dayIndex}-h`}
+                    className={`absolute inset-0 flex items-center justify-center cursor-pointer ${
+                      primaryGroup === 'AO Pipeline' ? 'bg-amber-subtle' :
+                      primaryGroup === 'Maintenance' ? 'bg-blue-subtle' :
+                      primaryGroup === 'Sync' ? 'bg-emerald-subtle' : 'bg-bg-overlay'
+                    }`}
+                    style={{
+                      gridColumn: dayIndex + 2,
+                      gridRow: hour + 2,
+                      position: 'relative',
+                    }}
+                    title={`${labels} (${cellBlocks.length} run${cellBlocks.length > 1 ? 's' : ''})`}
+                    onClick={() => setSelectedId(cellBlocks[0].entryId)}
+                  >
+                    {cellBlocks.length > 1 && (
+                      <span className="font-mono text-[9px] text-text-tertiary">{cellBlocks.length}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </div>
 

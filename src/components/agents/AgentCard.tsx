@@ -15,7 +15,7 @@ function relativeTime(isoString: string | null): string {
 
 const STATUS_STYLES: Record<string, { dot: string; ring: string; animation?: string }> = {
   active:  { dot: 'bg-status-active', ring: 'ring-status-active/30', animation: 'animate-pulse-active' },
-  idle:    { dot: 'bg-status-idle',   ring: 'ring-status-idle/20' },
+  idle:    { dot: 'bg-status-healthy', ring: 'ring-status-healthy/20', animation: 'animate-pulse-healthy' },
   dead:    { dot: 'bg-status-critical', ring: 'ring-status-critical/30', animation: 'animate-pulse-critical' },
   waiting: { dot: 'bg-accent-purple', ring: 'ring-accent-purple/30' },
   unknown: { dot: 'bg-text-disabled', ring: 'ring-text-disabled/20' },
@@ -70,10 +70,10 @@ export default function AgentCard({ agent, onClick }: AgentCardProps) {
           </div>
 
           <div className="flex gap-1.5 mt-2">
-            <MailBadge label="in" count={agent.mailbox.inbox} color="bg-accent-blue/20 text-accent-blue" />
-            <MailBadge label="proc" count={agent.mailbox.processing} color="bg-accent-amber-subtle text-accent-amber" />
-            <MailBadge label="done" count={agent.mailbox.done} color="bg-accent-emerald-subtle text-accent-emerald" />
-            <MailBadge label="dead" count={agent.mailbox.deadletter} color="bg-accent-red-subtle text-accent-red" />
+            <MailBadge label="in" count={agent.mailbox.inbox} color="bg-accent-blue/20 text-text-tertiary" highlightColor="bg-amber-subtle text-amber font-semibold" />
+            <MailBadge label="proc" count={agent.mailbox.processing} color="bg-accent-amber-subtle text-text-tertiary" />
+            <MailBadge label="done" count={agent.mailbox.done} color="bg-accent-emerald-subtle text-text-tertiary" />
+            <MailBadge label="dead" count={agent.mailbox.deadletter} color="bg-accent-red-subtle text-text-tertiary" highlightColor="bg-red-subtle text-red font-semibold" />
           </div>
         </div>
       </div>
@@ -81,9 +81,11 @@ export default function AgentCard({ agent, onClick }: AgentCardProps) {
   )
 }
 
-function MailBadge({ label, count, color }: { label: string; count: number; color: string }) {
+function MailBadge({ label, count, color, highlightColor }: { label: string; count: number; color: string; highlightColor?: string }) {
+  // Highlight non-zero inbox (amber) and deadletter (red)
+  const active = count > 0 && highlightColor
   return (
-    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono ${color}`}>
+    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono ${active ? highlightColor : color}`}>
       {label}:{count}
     </span>
   )

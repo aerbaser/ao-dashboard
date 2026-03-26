@@ -110,12 +110,16 @@ export default {
       },
       keyframes: {
         'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(245,166,35,0)' },
-          '50%': { boxShadow: '0 0 8px 2px rgba(245,166,35,0.3)' },
+          '0%, 100%': { boxShadow: '0 0 4px rgba(245,166,35,0.2)' },
+          '50%': { boxShadow: '0 0 8px rgba(245,166,35,0.4)' },
         },
         'pulse-glow-critical': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(239,68,68,0)' },
-          '50%': { boxShadow: '0 0 8px 2px rgba(239,68,68,0.4)' },
+          '0%, 100%': { boxShadow: '0 0 4px rgba(255,69,58,0.3)' },
+          '50%': { boxShadow: '0 0 10px rgba(255,69,58,0.6)' },
+        },
+        'pulse-glow-healthy': {
+          '0%, 100%': { boxShadow: '0 0 4px rgba(52,199,89,0.2)' },
+          '50%': { boxShadow: '0 0 8px rgba(52,199,89,0.5)' },
         },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
@@ -133,6 +137,7 @@ export default {
       animation: {
         'pulse-active': 'pulse-glow 2.5s ease-in-out infinite',
         'pulse-critical': 'pulse-glow-critical 1.2s ease-in-out infinite',
+        'pulse-healthy': 'pulse-glow-healthy 3s ease-in-out infinite',
         skeleton: 'shimmer 1.8s linear infinite',
         'fade-in': 'fadeIn 150ms ease',
         'slide-in-right': 'slideInRight 200ms cubic-bezier(0.16,1,0.3,1)',

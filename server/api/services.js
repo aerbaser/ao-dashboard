@@ -45,8 +45,26 @@ function parseSystemctlShow(stdout) {
   return data
 }
 
+function parseSystemdTimestamp(raw) {
+  // systemd outputs: "Thu 2026-03-26 17:26:28 WET" or "Thu 2026-03-26 17:26:28 UTC"
+  // Date.parse can't handle this. Strip day-name prefix and timezone suffix,
+  // parse as local if timezone is WET/WEST/CET/CEST, else as-is.
+  if (!raw || raw === 'n/a' || raw === '') return NaN
+  // Remove leading day name (e.g. "Thu ")
+  const cleaned = raw.replace(/^[A-Za-z]{3}\s+/, '')
+  // Try ISO-like: "2026-03-26 17:26:28 WET" → "2026-03-26T17:26:28"
+  const match = cleaned.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/)
+  if (match) {
+    const iso = `${match[1]}T${match[2]}`
+    const ts = Date.parse(iso) // parsed as local time
+    if (!Number.isNaN(ts)) return ts
+  }
+  // Fallback: try raw parse
+  return Date.parse(raw)
+}
+
 function formatDuration(from) {
-  const started = Date.parse(from)
+  const started = typeof from === 'number' ? from : parseSystemdTimestamp(from)
   if (Number.isNaN(started)) return 'Unknown'
   const seconds = Math.max(0, Math.floor((Date.now() - started) / 1000))
   if (seconds < 60) return `${seconds}s`
@@ -122,8 +140,8 @@ async function readServiceStatus(name) {
       port: meta.port,
       status: info.ActiveState || 'inactive',
       sub_status: info.SubState || 'unknown',
-      uptime: info.ActiveState === 'active' ? formatDuration(info.ActiveEnterTimestamp) : 'Stopped',
-      memory_mb: formatMemory(Number(info.MemoryCurrent || '0')),
+      uptime: info.ActiveState === 'active' ? formatDuration(info.ActiveEnterTimestamp) : null,
+      memory_mb: info.ActiveState === 'active' ? formatMemory(Number(info.MemoryCurrent || '0')) : null,
     }
   } catch {
     return {
@@ -133,8 +151,8 @@ async function readServiceStatus(name) {
       port: meta.port,
       status: 'inactive',
       sub_status: 'unknown',
-      uptime: 'Unavailable',
-      memory_mb: 0,
+      uptime: null,
+      memory_mb: null,
     }
   }
 }

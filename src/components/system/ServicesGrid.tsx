@@ -87,7 +87,7 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-semibold text-text-primary truncate" title={service.display_name}>{service.display_name}</h3>
-                          {service.forbidden && <span title="Forbidden service">🚫</span>}
+                          {service.forbidden && <span title="Protected — managed externally, actions disabled" className="cursor-help">🔒</span>}
                         </div>
                         <p className="mt-1 font-mono text-xs text-text-tertiary truncate" title={service.name}>{service.name}</p>
                       </div>

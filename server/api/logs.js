@@ -66,6 +66,7 @@ async function listDirs(dirPath) {
 
 // GET /api/logs/gateway?lines=200
 router.get('/gateway', async (req, res) => {
+  res.type('json') // ensure Content-Type: application/json even on error paths
   try {
     const lines = Math.min(Math.max(parseInt(req.query.lines) || 200, 1), 10000)
     const dateStr = todayLisbon()

@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, TransitionError } from '../../lib/types';
+import CopyButton from '../ui/CopyButton';
 
 function timeAgo(minutes: number | null): string {
   if (minutes === null || minutes === undefined) return '—';
@@ -52,8 +53,9 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
         </p>
 
         {/* Task ID */}
-        <p className="font-mono text-xs text-text-tertiary mt-1">
-          {task.id}
+        <p className="font-mono text-xs text-text-tertiary mt-1 flex items-center gap-1">
+          <span>{task.id}</span>
+          <CopyButton text={task.id} />
         </p>
 
         {/* Badges row */}

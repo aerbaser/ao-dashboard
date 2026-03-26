@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import TopBar from './components/layout/TopBar'
 import Sidebar from './components/layout/Sidebar'
+import ShortcutsModal from './components/layout/ShortcutsModal'
 import { usePolling } from './hooks/usePolling'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { getStatus } from './lib/api'
 
 export default function App() {
   const { data: status } = usePolling(getStatus, 5000)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { showHelp, setShowHelp, shortcuts } = useKeyboardShortcuts()
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -34,6 +37,11 @@ export default function App() {
           <Outlet />
         </main>
       </div>
+
+      {/* Keyboard shortcuts modal */}
+      {showHelp && (
+        <ShortcutsModal shortcuts={shortcuts} onClose={() => setShowHelp(false)} />
+      )}
     </div>
   )
 }

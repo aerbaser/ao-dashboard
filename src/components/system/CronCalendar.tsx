@@ -127,9 +127,9 @@ export default function CronCalendar({ entries, loading, saving = false, onEntri
         {saving && <span className="font-mono text-xs text-amber">Saving…</span>}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-w-full relative">
         <div className="grid min-w-[920px] grid-cols-[72px_repeat(7,minmax(110px,1fr))]">
-          <div className="border-r border-border-subtle bg-bg-base" />
+          <div className="border-r border-border-subtle bg-bg-base sticky left-0 z-10" />
           {DAYS.map((day) => (
             <div key={day} className="border-b border-r border-border-subtle bg-bg-base px-3 py-2 text-center font-mono text-xs text-text-secondary last:border-r-0">
               {day}
@@ -138,7 +138,7 @@ export default function CronCalendar({ entries, loading, saving = false, onEntri
 
           {HOURS.map((hour) => (
             <div key={hour} className="contents">
-              <div className="border-r border-border-subtle px-3 py-2 font-mono text-xs text-text-tertiary">
+              <div className="border-r border-border-subtle px-3 py-2 font-mono text-xs text-text-tertiary sticky left-0 bg-bg-base z-10">
                 {hour.toString().padStart(2, '0')}:00
               </div>
               {DAYS.map((_, dayIndex) => (

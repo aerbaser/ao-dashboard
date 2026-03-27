@@ -96,7 +96,7 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
                       </span>
                     </div>
 
-                    <dl className="grid grid-cols-2 gap-3 text-xs">
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
                         <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Uptime</dt>
                         <dd className="font-mono text-text-secondary">{service.uptime ?? '—'}</dd>

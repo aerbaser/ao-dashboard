@@ -144,7 +144,7 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
         <div
           ref={parentRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-auto font-mono text-xs"
+          className="flex-1 overflow-auto font-mono text-xs max-w-full"
         >
           {filteredLines.length === 0 && !loading && !error ? (
             <div className="flex-1 flex items-center justify-center">

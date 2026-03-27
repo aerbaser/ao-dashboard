@@ -31,8 +31,8 @@ function ConfigValue({ label, value, searchMatch }: { label: string; value: unkn
 
   if (isRedacted(value)) {
     return (
-      <div className="flex items-center gap-2 py-1 group">
-        <span className="text-text-secondary text-sm min-w-[180px] font-mono shrink-0">{label}</span>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 py-1 group">
+        <span className="text-text-secondary text-sm sm:min-w-[180px] font-mono sm:shrink-0">{label}</span>
         <span className="text-text-tertiary text-sm font-mono flex items-center gap-1">
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 1a4 4 0 0 0-4 4v3H3a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm2 7H6V5a2 2 0 1 1 4 0v3z"/>
@@ -49,9 +49,9 @@ function ConfigValue({ label, value, searchMatch }: { label: string; value: unkn
 
   if (Array.isArray(value)) {
     return (
-      <div className={`flex items-start gap-2 py-1 group ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
-        <span className="text-text-secondary text-sm min-w-[180px] font-mono shrink-0">{label}</span>
-        <div className="flex flex-wrap gap-1 min-w-0">
+      <div className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 py-1 group ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
+        <span className="text-text-secondary text-sm sm:min-w-[180px] font-mono sm:shrink-0">{label}</span>
+        <div className="flex flex-wrap gap-1 min-w-0 overflow-x-auto max-w-full">
           {value.map((item, i) => (
             <span key={i} className="bg-bg-surface text-text-secondary text-xs font-mono px-2 py-0.5 rounded border border-border-subtle break-all" style={{ borderRadius: '4px' }}>
               {typeof item === 'object' ? JSON.stringify(item) : String(item)}
@@ -64,10 +64,12 @@ function ConfigValue({ label, value, searchMatch }: { label: string; value: unkn
   }
 
   return (
-    <div className={`flex items-center gap-2 py-1 group ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
-      <span className="text-text-secondary text-sm min-w-[180px] font-mono shrink-0">{label}</span>
-      <ValueDisplay value={value} />
-      <CopyButton text={String(value)} />
+    <div className={`flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 py-1 group ${searchMatch ? 'bg-amber-subtle/30 -mx-2 px-2 rounded' : ''}`}>
+      <span className="text-text-secondary text-sm sm:min-w-[180px] font-mono sm:shrink-0">{label}</span>
+      <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+        <ValueDisplay value={value} />
+        <CopyButton text={String(value)} />
+      </div>
     </div>
   )
 }

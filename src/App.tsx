@@ -33,7 +33,7 @@ export default function App() {
         >
           <Sidebar status={status} onClose={() => setSidebarOpen(false)} />
         </div>
-        <main className="flex-1 overflow-auto p-3 md:p-6 min-w-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-6 min-w-0">
           <Outlet />
         </main>
       </div>

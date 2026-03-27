@@ -62,7 +62,7 @@ export default function SystemPage() {
   }
 
   return (
-    <div className="min-h-full space-y-4">
+    <div className="min-h-full space-y-4 overflow-hidden">
       {feedback && (
         <div className="fixed right-6 top-16 z-50 rounded-md border border-border-default bg-bg-elevated px-3 py-2 font-mono text-xs text-text-primary shadow-lg">
           {feedback}

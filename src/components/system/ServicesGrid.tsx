@@ -56,7 +56,7 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
           return rank(a.status) - rank(b.status)
         })
         return (
-          <section key={group} className="rounded-lg border border-border-subtle bg-bg-surface p-4 shadow-panel">
+          <section key={group} className="rounded-lg border border-border-subtle bg-bg-surface p-4 shadow-panel min-w-0">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-text-primary">{group}</h2>
               <span className="rounded-full border border-border-subtle px-2 py-0.5 font-mono text-xs text-text-tertiary">
@@ -75,7 +75,7 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
                 return (
                   <article
                     key={service.name}
-                    className={`group rounded-md border p-3 transition-colors ${
+                    className={`group rounded-md border p-3 transition-colors min-w-0 ${
                       service.forbidden ? 'opacity-50 border-border-default bg-bg-void' :
                       isInactive ? 'opacity-60 border-l-2 border-l-red/40 border-border-default bg-bg-void' :
                       isFailed ? 'border-red/30 bg-bg-elevated animate-pulse-critical' :
@@ -96,7 +96,7 @@ export default function ServicesGrid({ services, loading, onAction }: ServicesGr
                       </span>
                     </div>
 
-                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs min-w-0">
                       <div>
                         <dt className="mb-1 font-mono uppercase tracking-wide text-text-tertiary">Uptime</dt>
                         <dd className="font-mono text-text-secondary">{service.uptime ?? '—'}</dd>

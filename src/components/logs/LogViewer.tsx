@@ -99,7 +99,7 @@ export default function LogViewer({ lines, loading, error, paused }: LogViewerPr
   return (
     <div className="flex flex-col h-full">
       {/* Filter bar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle bg-bg-surface">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-border-subtle bg-bg-surface">
         {ALL_LEVELS.map((level) => (
           <button
             key={level}

@@ -77,7 +77,7 @@ export default function SystemPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <ServicesGrid
             services={services.data ?? []}
             loading={services.loading}
@@ -91,7 +91,7 @@ export default function SystemPage() {
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <ServerVitals vitals={vitals.data} loading={vitals.loading} />
           <UsageTracker
             data={rateLimits.data}

@@ -280,20 +280,20 @@ export interface LogEvent {
 }
 
 export function getGatewayLog(lines = 200): Promise<GatewayLogResponse> {
-  return fetchJson<GatewayLogResponse>(`/api/logs/gateway?lines=${lines}`)
+  return fetchJson<GatewayLogResponse>(`/logs/gateway?lines=${lines}`)
 }
 export function getWorkerList(): Promise<WorkerListResponse> {
-  return fetchJson<WorkerListResponse>('/api/logs/worker')
+  return fetchJson<WorkerListResponse>('/logs/worker')
 }
 export function getWorkerLog(name: string, lines = 100): Promise<WorkerLogResponse> {
-  return fetchJson<WorkerLogResponse>(`/api/logs/worker/${encodeURIComponent(name)}?lines=${lines}`)
+  return fetchJson<WorkerLogResponse>(`/logs/worker/${encodeURIComponent(name)}?lines=${lines}`)
 }
 export function getDecisions(params?: { agent?: string; task_id?: string }): Promise<Decision[]> {
   const sp = new URLSearchParams()
   if (params?.agent) sp.set('agent', params.agent)
   if (params?.task_id) sp.set('task_id', params.task_id)
   const qs = sp.toString()
-  return fetchJson<Decision[]>(`/api/decisions${qs ? `?${qs}` : ''}`)
+  return fetchJson<Decision[]>(`/decisions${qs ? `?${qs}` : ''}`)
 }
 export function getLogEvents(params?: { agent?: string; task_id?: string; type?: string }): Promise<LogEvent[]> {
   const sp = new URLSearchParams()
@@ -301,7 +301,7 @@ export function getLogEvents(params?: { agent?: string; task_id?: string; type?:
   if (params?.task_id) sp.set('task_id', params.task_id)
   if (params?.type) sp.set('type', params.type)
   const qs = sp.toString()
-  return fetchJson<LogEvent[]>(`/api/events${qs ? `?${qs}` : ''}`)
+  return fetchJson<LogEvent[]>(`/events${qs ? `?${qs}` : ''}`)
 }
 
 // Aliases for backwards-compat with Logs components

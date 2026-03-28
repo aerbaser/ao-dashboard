@@ -56,6 +56,14 @@ export default {
           dead:     '#7F1D1D',
           info:     '#60A5FA',
         },
+        idea: {
+          draft:          '#403E3C',
+          brainstorming:  '#60A5FA',
+          'artifact-ready': '#22C55E',
+          approved:       '#818CF8',
+          'in-work':      '#F5A623',
+          archived:       '#2A2927',
+        },
         pipeline: {
           INTAKE:         '#60A5FA',
           CONTEXT:        '#818CF8',

@@ -230,5 +230,4 @@ router.post('/:id/artifact', async (req, res) => {
   } catch (err) { res.status(500).json({ error: String(err) }) }
 })
 
-
 export default router

@@ -1,4 +1,7 @@
+import type { ReactNode } from 'react'
+
 interface ConfirmDialogProps {
+  open?: boolean
   title: string
   message: string | ReactNode
   confirmText?: string
@@ -9,6 +12,7 @@ interface ConfirmDialogProps {
 }
 
 export default function ConfirmDialog({
+  open = true,
   title,
   message,
   confirmText = 'Confirm',
@@ -21,6 +25,8 @@ export default function ConfirmDialog({
     variant === 'danger'
       ? 'bg-red hover:bg-red/80 text-text-primary'
       : 'bg-amber hover:bg-amber/80 text-text-inverse'
+
+  if (!open) return null
 
   return (
     <>

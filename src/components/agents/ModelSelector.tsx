@@ -136,7 +136,6 @@ export default function ModelSelector({ agent, currentModel, onToast }: ModelSel
       <ConfirmDialog
         open={selectedModel !== null}
         title="Model Change — Gateway Restart Required"
-        confirmLabel="⚠ Confirm Change"
         confirmText={agent.id}
         variant="danger"
         onConfirm={handleConfirm}

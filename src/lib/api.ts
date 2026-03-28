@@ -275,6 +275,17 @@ export async function moveEnvelope(agentId: string, fromFolder: string, toFolder
   });
   return res.json();
 }
+export async function changeAgentModel(
+  agentId: string,
+  model: string
+): Promise<{ ok: boolean; restarting?: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/agents/${agentId}/model`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  })
+  return res.json()
+}
 
 // ─── Logs ────────────────────────────────────────────────────────────────────
 

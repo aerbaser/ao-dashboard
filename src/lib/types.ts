@@ -232,3 +232,23 @@ export interface RateLimitsResponse {
   stale: boolean;
   profiles: UsageProfile[];
 }
+
+// ─── Ideas ──────────────────────────────────────────────────────────────────
+
+export type IdeaStatus = 'draft' | 'brainstorming' | 'artifact_ready' | 'approved' | 'in_work' | 'archived';
+
+export interface Idea {
+  id: string;
+  title: string;
+  body: string;
+  status: IdeaStatus;
+  created_at: string;
+  updated_at: string;
+  tags: string[];
+  target_agent: string;
+  target_project: string;
+  artifact_md: string | null;
+  artifact_generated_at: string | null;
+  task_id: string | null;
+  brainstorm_session_id: string | null;
+}

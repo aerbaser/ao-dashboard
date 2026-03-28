@@ -12,6 +12,7 @@ import type {
   CronResponse,
   VitalsResponse,
   RateLimitsResponse,
+  Idea,
 } from './types';
 
 const BASE = '/api';
@@ -343,5 +344,44 @@ export function switchRateLimitProfile(profile: string): Promise<{ ok: boolean; 
   return request<{ ok: boolean; active: string }>('/rate-limits/switch', {
     method: 'POST',
     body: JSON.stringify({ profile }),
+  })
+}
+
+// ─── Ideas ──────────────────────────────────────────────────────────────────
+
+export function fetchIdeas(status?: string): Promise<Idea[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+  return fetchJson<Idea[]>(`/ideas${qs}`)
+}
+
+export function createIdea(data: {
+  title: string;
+  body?: string;
+  tags?: string[];
+  target_agent?: string;
+}): Promise<Idea> {
+  return request<Idea>('/ideas', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateIdea(id: string, data: Partial<Idea>): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export function approveIdea(id: string, taskId?: string): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ task_id: taskId }),
+  })
+}
+
+export function deleteIdea(id: string): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
   })
 }

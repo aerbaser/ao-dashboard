@@ -11,6 +11,7 @@ export interface GlobalStatus {
   cpu_temp: number | null
   claude_usage_percent: number | null
   codex_usage_percent: number | null
+  ideas_actionable: number
   timestamp: string
 }
 
@@ -220,4 +221,25 @@ export interface RateLimitsResponse {
   cached: boolean;
   stale: boolean;
   profiles: UsageProfile[];
+}
+
+// ─── Ideas ──────────────────────────────────────────────────────────────────
+
+export const IDEA_STATUSES = [
+  'draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived',
+] as const;
+
+export type IdeaStatus = (typeof IDEA_STATUSES)[number];
+
+export interface Idea {
+  id: string;
+  title: string;
+  body: string;
+  status: IdeaStatus;
+  tags: string[];
+  target_agent: string;
+  artifact?: string;
+  task_id?: string;
+  created_at: string;
+  updated_at: string;
 }

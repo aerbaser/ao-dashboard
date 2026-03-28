@@ -7,6 +7,17 @@ import { execFile } from 'child_process'
 
 const router = Router()
 
+const VALID_ID_RE = /^idea_\d{8}_[a-f0-9]{6}$/
+
+/** Validate idea :id param — prevents path traversal */
+function validateId(req, res) {
+  if (!VALID_ID_RE.test(req.params.id)) {
+    res.status(400).json({ error: `Invalid idea id format: ${req.params.id}` })
+    return false
+  }
+  return true
+}
+
 const IDEAS_DIR = join(process.env.HOME, 'clawd/ideas')
 const TASK_STORE = join(process.env.HOME, 'clawd/scripts/task-store.js')
 const COMM_DIR = join(
@@ -103,6 +114,7 @@ router.post('/', async (req, res) => {
 // ─── GET /:id — get single idea ─────────────────────────────────────────────
 
 router.get('/:id', async (req, res) => {
+  if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
     if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
@@ -135,6 +147,7 @@ router.patch('/:id', async (req, res) => {
 // ─── POST /:id/brainstorm — trigger brainstorm agent ────────────────────────
 
 router.post('/:id/brainstorm', async (req, res) => {
+  if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
     if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
@@ -159,6 +172,7 @@ router.post('/:id/brainstorm', async (req, res) => {
 // ─── POST /:id/approve — create task from idea ─────────────────────────────
 
 router.post('/:id/approve', async (req, res) => {
+  if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
     if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
@@ -213,6 +227,7 @@ router.post('/:id/approve', async (req, res) => {
 // ─── POST /:id/archive — archive idea ──────────────────────────────────────
 
 router.post('/:id/archive', async (req, res) => {
+  if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
     if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })

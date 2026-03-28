@@ -348,21 +348,9 @@ export function switchRateLimitProfile(profile: string): Promise<{ ok: boolean; 
 
 // ─── Ideas ──────────────────────────────────────────────────────────────────
 
-export interface Idea {
-  id: string
-  title: string
-  body: string
-  status: 'draft' | 'brainstorming' | 'artifact_ready' | 'approved' | 'in_work' | 'archived'
-  created_at: string
-  updated_at: string
-  tags: string[]
-  target_agent: string
-  target_project: string
-  artifact_md: string | null
-  artifact_generated_at: string | null
-  task_id: string | null
-  brainstorm_session_id: string | null
-}
+// Re-export Idea from types.ts for backwards compatibility
+export type { Idea } from './types'
+import type { Idea } from './types'
 
 export function fetchIdeas(): Promise<Idea[]> {
   return fetchJson<Idea[]>('/ideas')

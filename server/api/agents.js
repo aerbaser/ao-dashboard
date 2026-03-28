@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { readdir, readFile, unlink, rename, mkdir } from 'fs/promises'
+import { readdir, readFile, writeFile, unlink, rename, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { execFile } from 'child_process'
 import { existsSync } from 'fs'
@@ -12,6 +12,7 @@ const MAILBOXES_DIR = join(HOME, 'clawd/runtime/mailboxes')
 const COMM_DIR = join(HOME, '.openclaw/shared-memory/communication')
 const SESSIONS_SEND = join(HOME, 'clawd/scripts/sessions-send.js')
 const WEBHOOKS_FILE = join(HOME, 'clawd/runtime/agent-webhooks.json')
+const OPENCLAW_JSON = join(HOME, '.openclaw/openclaw.json')
 
 const AGENT_META = [
   { id: 'sokrat',           name: 'Сократ',           emoji: '🦉', role: 'Orchestrator' },
@@ -248,6 +249,58 @@ router.post('/:id/mailbox/:folder/:envelopeId/move', async (req, res) => {
     if (err.code === 'ENOENT') {
       return res.status(404).json({ ok: false, error: 'Envelope not found' })
     }
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// GET /api/agents/:id/skills — get agent's active skills from openclaw.json
+router.get('/:id/skills', async (req, res) => {
+  const { id } = req.params
+  try {
+    const raw = await readFile(OPENCLAW_JSON, 'utf-8')
+    const config = JSON.parse(raw)
+    const agentList = config?.agents?.list || []
+    const agent = agentList.find(a => a.id === id)
+    if (!agent) {
+      return res.status(404).json({ error: `Agent '${id}' not found in openclaw.json` })
+    }
+    res.json({ skills: agent.skills || [] })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PUT /api/agents/:id/skills — update agent skills in openclaw.json
+router.put('/:id/skills', async (req, res) => {
+  const { id } = req.params
+  const { skills } = req.body
+
+  if (!Array.isArray(skills)) {
+    return res.status(400).json({ ok: false, error: 'skills must be an array' })
+  }
+  if (skills.length === 0) {
+    return res.status(400).json({ ok: false, error: 'skills array must not be empty' })
+  }
+  // Validate all entries are non-empty strings
+  if (!skills.every(s => typeof s === 'string' && s.trim().length > 0)) {
+    return res.status(400).json({ ok: false, error: 'all skills must be non-empty strings' })
+  }
+
+  try {
+    const raw = await readFile(OPENCLAW_JSON, 'utf-8')
+    const config = JSON.parse(raw)
+    const agentList = config?.agents?.list || []
+    const agentIdx = agentList.findIndex(a => a.id === id)
+    if (agentIdx === -1) {
+      return res.status(404).json({ ok: false, error: `Agent '${id}' not found in openclaw.json` })
+    }
+
+    const dedupedSkills = [...new Set(skills.map(s => s.trim()))]
+    config.agents.list[agentIdx].skills = dedupedSkills
+
+    await writeFile(OPENCLAW_JSON, JSON.stringify(config, null, 2) + '\n', 'utf-8')
+    res.json({ ok: true, skills: dedupedSkills })
+  } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }
 })

@@ -260,6 +260,26 @@ export async function moveEnvelope(agentId: string, fromFolder: string, toFolder
   });
   return res.json();
 }
+export async function fetchAgentSkills(agentId: string): Promise<{ skills: string[] }> {
+  return fetchJson<{ skills: string[] }>(`/agents/${agentId}/skills`);
+}
+export async function updateAgentSkills(agentId: string, skills: string[]): Promise<{ ok: boolean; skills: string[]; error?: string }> {
+  return request<{ ok: boolean; skills: string[]; error?: string }>(`/agents/${agentId}/skills`, {
+    method: 'PUT',
+    body: JSON.stringify({ skills }),
+  });
+}
+
+export interface SkillInfo {
+  name: string;
+  path: string;
+  size: number;
+  content: string;
+}
+export type SkillsData = Record<string, SkillInfo[]>;
+export async function fetchAllSkills(): Promise<SkillsData> {
+  return fetchJson<SkillsData>('/skills');
+}
 
 // ─── Logs ────────────────────────────────────────────────────────────────────
 

@@ -74,6 +74,14 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
   // Subdirectories for artifacts
   const artifactDirs = ['issue-contracts', 'outputs', 'execution-bundles', 'review-findings'];
 
+  const commentList = events
+    .filter((e) => e.event_type === 'USER_COMMENT' || (e as Record<string, unknown>)['type'] === 'USER_COMMENT')
+    .map((e) => ({
+      actor: e.actor,
+      body: ((e as Record<string, unknown>)['body'] as string | undefined) || ((e as Record<string, unknown>)['payload'] as { body?: string } | undefined)?.body || '',
+      timestamp: e.timestamp,
+    }));
+
   return (
     <>
       {/* Overlay */}
@@ -146,30 +154,19 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
             </section>
 
             {/* Comments */}
-            {(() => {
-              const commentList = events
-                .filter((e) => (e.event_type as string) === 'USER_COMMENT' || (e.type as string) === 'USER_COMMENT')
-                .map((e) => ({
-                  actor: e.actor as string,
-                  body: (e.body as string) || ((e as { payload?: { body?: string } }).payload?.body ?? ''),
-                  timestamp: e.timestamp as string,
-                }));
-              return (
-                <section>
-                  <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                    Comments
-                  </h3>
-                  <CommentThread comments={commentList} />
-                  {task.state === 'AWAITING_OWNER' && (
-                    <div className="mt-3">
-                      <CommentInput taskId={task.id} onCommentAdded={() => {
-                        fetchTaskEvents(task.id).catch(() => []).then(setEvents);
-                      }} />
-                    </div>
-                  )}
-                </section>
-              );
-            })()}
+            <section>
+              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                Comments
+              </h3>
+              <CommentThread comments={commentList} />
+              {task.state === 'AWAITING_OWNER' && (
+                <div className="mt-3">
+                  <CommentInput taskId={task.id} onCommentAdded={() => {
+                    fetchTaskEvents(task.id).catch(() => []).then(setEvents);
+                  }} />
+                </div>
+              )}
+            </section>
 
             {/* Decision Log */}
             {decisions.length > 0 && (

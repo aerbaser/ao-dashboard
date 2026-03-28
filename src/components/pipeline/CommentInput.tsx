@@ -9,17 +9,20 @@ interface CommentInputProps {
 export function CommentInput({ taskId, onCommentAdded }: CommentInputProps) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const send = useCallback(async () => {
     const body = text.trim();
     if (!body || sending) return;
     setSending(true);
+    setError(null);
     try {
       await addTaskEvent(taskId, 'USER_COMMENT', { actor: 'owner', body });
       setText('');
       onCommentAdded();
-    } catch {
-      // keep it simple — no error UI
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setError(err?.message || 'Failed to send comment');
     } finally {
       setSending(false);
     }
@@ -37,6 +40,9 @@ export function CommentInput({ taskId, onCommentAdded }: CommentInputProps) {
 
   return (
     <div className="flex flex-col gap-2">
+      {error && (
+        <p className="text-xs text-red font-mono">{error}</p>
+      )}
       <textarea
         rows={2}
         value={text}

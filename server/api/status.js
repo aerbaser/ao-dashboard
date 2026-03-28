@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { readFile } from 'fs/promises'
+import { readFile, readdir } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -12,6 +12,7 @@ const router = Router()
 let cachedResult = null
 let cachedAt = 0
 const CACHE_TTL_MS = 4000 // cache for 4s (poll is 5s)
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 
 async function readCpuTemp() {
   try {
@@ -106,31 +107,32 @@ async function assembleStatus() {
   let awaitingOwnerCount = 0
   let awaitingOwnerOverdue = false
   try {
-    const { readdirSync, readFileSync } = await import('fs')
     const tasksDir = join(homedir(), 'clawd/tasks')
-    const entries = readdirSync(tasksDir)
-    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
-    for (const entry of entries) {
-      if (!entry.startsWith('tsk_')) continue
-      try {
-        const statusPath = join(tasksDir, entry, 'status.json')
-        const raw = readFileSync(statusPath, 'utf-8')
-        const taskStatus = JSON.parse(raw)
-        if (taskStatus.state === 'AWAITING_OWNER') {
-          awaitingOwnerCount++
-          if (taskStatus.updated_at) {
-            const updatedAtMs = new Date(taskStatus.updated_at).getTime()
-            if (!isNaN(updatedAtMs) && (now - updatedAtMs) > FOUR_HOURS_MS) {
-              awaitingOwnerOverdue = true
-            }
-          }
+    const entries = await readdir(tasksDir)
+    const tskEntries = entries.filter(e => e.startsWith('tsk_'))
+    const taskResults = await Promise.all(
+      tskEntries.map(async (entry) => {
+        try {
+          const statusPath = join(tasksDir, entry, 'status.json')
+          const raw = await readFile(statusPath, 'utf-8')
+          return JSON.parse(raw)
+        } catch {
+          return null
         }
-      } catch {
-        // skip unreadable task status files
+      })
+    )
+    for (const taskStatus of taskResults) {
+      if (!taskStatus || taskStatus.state !== 'AWAITING_OWNER') continue
+      awaitingOwnerCount++
+      if (taskStatus.updated_at) {
+        const updatedAtMs = new Date(taskStatus.updated_at).getTime()
+        if (!isNaN(updatedAtMs) && (now - updatedAtMs) > FOUR_HOURS_MS) {
+          awaitingOwnerOverdue = true
+        }
       }
     }
   } catch {
-    // tasks dir not available or fs import failed
+    // tasks dir not available
   }
 
   const result = {

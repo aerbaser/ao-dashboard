@@ -11,12 +11,14 @@ export interface GlobalStatus {
   cpu_temp: number | null
   claude_usage_percent: number | null
   codex_usage_percent: number | null
+  awaiting_owner_count: number
+  awaiting_owner_overdue: boolean
   timestamp: string
 }
 
 export const PIPELINE_STATES = [
   'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
-  'EXECUTION', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
+  'EXECUTION', 'AWAITING_OWNER', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
   'FINALIZING', 'DEPLOYING', 'OBSERVING', 'DONE',
   'BLOCKED', 'FAILED', 'WAITING_USER', 'STUCK',
 ] as const;
@@ -25,7 +27,7 @@ export type PipelineState = (typeof PIPELINE_STATES)[number];
 
 export const MAIN_FLOW_STATES: PipelineState[] = [
   'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
-  'EXECUTION', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
+  'EXECUTION', 'AWAITING_OWNER', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
   'FINALIZING', 'DEPLOYING', 'OBSERVING', 'DONE',
 ];
 
@@ -105,6 +107,7 @@ export interface Task {
   hasOutcome: boolean;
   hasRelease: boolean;
   state_entered_at?: string;
+  actors?: string[];
   contract?: TaskContract;
   events?: TaskEvent[];
   decisions?: TaskDecision[];
@@ -135,6 +138,7 @@ export interface TaskListItem {
   hasOutcome: boolean;
   hasRelease: boolean;
   state_entered_at?: string;
+  actors?: string[];
 }
 
 export type ServiceGroup = 'Core' | 'Agents' | 'Integrations';

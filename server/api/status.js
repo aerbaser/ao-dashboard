@@ -102,6 +102,37 @@ async function assembleStatus() {
     // cache not available — return null (UI shows '—')
   }
 
+  // AWAITING_OWNER scanning — count tasks in that state and check 4h threshold
+  let awaitingOwnerCount = 0
+  let awaitingOwnerOverdue = false
+  try {
+    const { readdirSync, readFileSync } = await import('fs')
+    const tasksDir = join(homedir(), 'clawd/tasks')
+    const entries = readdirSync(tasksDir)
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
+    for (const entry of entries) {
+      if (!entry.startsWith('tsk_')) continue
+      try {
+        const statusPath = join(tasksDir, entry, 'status.json')
+        const raw = readFileSync(statusPath, 'utf-8')
+        const taskStatus = JSON.parse(raw)
+        if (taskStatus.state === 'AWAITING_OWNER') {
+          awaitingOwnerCount++
+          if (taskStatus.updated_at) {
+            const updatedAtMs = new Date(taskStatus.updated_at).getTime()
+            if (!isNaN(updatedAtMs) && (now - updatedAtMs) > FOUR_HOURS_MS) {
+              awaitingOwnerOverdue = true
+            }
+          }
+        }
+      } catch {
+        // skip unreadable task status files
+      }
+    }
+  } catch {
+    // tasks dir not available or fs import failed
+  }
+
   const result = {
     gateway_up: gatewayUp,
     agents_alive: agentsAlive,
@@ -114,6 +145,8 @@ async function assembleStatus() {
     cpu_temp: cpuTemp,
     claude_usage_percent: claudeUsagePercent,
     codex_usage_percent: codexUsagePercent,
+    awaiting_owner_count: awaitingOwnerCount,
+    awaiting_owner_overdue: awaitingOwnerOverdue,
     timestamp: new Date().toISOString(),
   }
 

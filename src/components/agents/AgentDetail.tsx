@@ -121,7 +121,7 @@ export default function AgentDetail({ agent, onClose, onToast }: AgentDetailProp
             <MailboxViewer agentId={agent.id} onToast={onToast} />
           )}
           {tab === 'Skills' && (
-            <SkillsManager agentId={agent.id} onToast={onToast} />
+            <SkillsManager agentId={agent.id} initialSkills={agent.skills ?? []} onToast={onToast} />
           )}
           {tab === 'INBOX.md' && (
             <InboxMdTab agentId={agent.id} />

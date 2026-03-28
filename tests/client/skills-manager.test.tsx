@@ -2,12 +2,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import SkillsManager from '../../src/components/agents/SkillsManager'
 
-const mockFetchAgentSkills = vi.fn()
 const mockUpdateAgentSkills = vi.fn()
 const mockFetchAllSkills = vi.fn()
 
 vi.mock('../../src/lib/api', () => ({
-  fetchAgentSkills: (...args: unknown[]) => mockFetchAgentSkills(...args),
   updateAgentSkills: (...args: unknown[]) => mockUpdateAgentSkills(...args),
   fetchAllSkills: (...args: unknown[]) => mockFetchAllSkills(...args),
 }))
@@ -28,7 +26,6 @@ describe('SkillsManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFetchAgentSkills.mockResolvedValue({ skills: [...AGENT_SKILLS] })
     mockFetchAllSkills.mockResolvedValue(ALL_SKILLS)
     mockUpdateAgentSkills.mockResolvedValue({ ok: true, skills: ['github', 'coding-agent'] })
   })
@@ -36,7 +33,7 @@ describe('SkillsManager', () => {
   afterEach(() => { cleanup() })
 
   it('renders correct toggle state from API', async () => {
-    render(<SkillsManager agentId="archimedes" onToast={onToast} />)
+    render(<SkillsManager agentId="archimedes" initialSkills={[...AGENT_SKILLS]} onToast={onToast} />)
     await waitFor(() => {
       expect(screen.getByText('github')).toBeTruthy()
     })
@@ -50,7 +47,7 @@ describe('SkillsManager', () => {
   })
 
   it('batch changes collected until Apply', async () => {
-    render(<SkillsManager agentId="archimedes" onToast={onToast} />)
+    render(<SkillsManager agentId="archimedes" initialSkills={[...AGENT_SKILLS]} onToast={onToast} />)
     await waitFor(() => {
       expect(screen.getByText('github')).toBeTruthy()
     })
@@ -74,7 +71,7 @@ describe('SkillsManager', () => {
   it('Apply sends PUT and shows confirmation toast', async () => {
     mockUpdateAgentSkills.mockResolvedValue({ ok: true, skills: ['coding-agent', 'github'] })
 
-    render(<SkillsManager agentId="archimedes" onToast={onToast} />)
+    render(<SkillsManager agentId="archimedes" initialSkills={[...AGENT_SKILLS]} onToast={onToast} />)
     await waitFor(() => {
       expect(screen.getByText('github')).toBeTruthy()
     })
@@ -104,7 +101,7 @@ describe('SkillsManager', () => {
   })
 
   it('Add Skill dropdown shows unassigned skills', async () => {
-    render(<SkillsManager agentId="archimedes" onToast={onToast} />)
+    render(<SkillsManager agentId="archimedes" initialSkills={[...AGENT_SKILLS]} onToast={onToast} />)
     await waitFor(() => {
       expect(screen.getByText('github')).toBeTruthy()
     })

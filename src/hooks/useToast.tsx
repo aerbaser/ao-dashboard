@@ -55,6 +55,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       : messageOrToast
     const toast: Toast = { id, dismissible: true, ...payload }
     setToasts((prev) => {
+      const last = prev[prev.length - 1]
+      if (last && last.message === toast.message && last.variant === toast.variant) return prev
       const next = [...prev, toast]
       if (next.length > MAX_TOASTS) {
         const removed = next.shift()!

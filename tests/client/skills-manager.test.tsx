@@ -65,7 +65,7 @@ describe('SkillsManager', () => {
     })
 
     // Apply button should be visible
-    expect(screen.getByText('Apply & Restart')).toBeTruthy()
+    expect(screen.getByText('Apply')).toBeTruthy()
 
     // API should NOT have been called yet
     expect(mockUpdateAgentSkills).not.toHaveBeenCalled()
@@ -86,9 +86,9 @@ describe('SkillsManager', () => {
 
     // Click Apply
     await waitFor(() => {
-      expect(screen.getByText('Apply & Restart')).toBeTruthy()
+      expect(screen.getByText('Apply')).toBeTruthy()
     })
-    fireEvent.click(screen.getByText('Apply & Restart'))
+    fireEvent.click(screen.getByText('Apply'))
 
     await waitFor(() => {
       expect(mockUpdateAgentSkills).toHaveBeenCalledWith(

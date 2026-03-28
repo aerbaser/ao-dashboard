@@ -1,7 +1,7 @@
 import type { AgentInfo } from '../../lib/api'
 
 const STATUS_DOT: Record<string, string> = {
-  active:  'bg-accent-emerald',
+  active:  'bg-emerald',
   idle:    'bg-status-idle',
   dead:    'bg-status-critical',
   waiting: 'bg-accent-purple',

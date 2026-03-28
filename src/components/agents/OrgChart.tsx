@@ -60,7 +60,7 @@ export default function OrgChart({ onSelectAgent }: OrgChartProps) {
   if (error && agents.length === 0) {
     return (
       <div className="text-center py-12 text-text-secondary">
-        <p className="text-accent-red">{error}</p>
+        <p className="text-red">{error}</p>
         <button onClick={load} className="mt-2 text-[11px] text-accent-amber hover:underline">
           Retry
         </button>

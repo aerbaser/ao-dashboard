@@ -134,6 +134,10 @@ export default {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
         },
+        slideDown: {
+          from: { opacity: '0', maxHeight: '0' },
+          to: { opacity: '1', maxHeight: '800px' },
+        },
       },
       animation: {
         'pulse-active': 'pulse-glow 2.5s ease-in-out infinite',
@@ -142,6 +146,7 @@ export default {
         skeleton: 'shimmer 1.8s linear infinite',
         'fade-in': 'fadeIn 150ms ease',
         'slide-in-right': 'slideInRight 200ms cubic-bezier(0.16,1,0.3,1)',
+        'slide-down': 'slideDown 300ms cubic-bezier(0.16,1,0.3,1) forwards',
       },
     },
   },

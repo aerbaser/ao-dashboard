@@ -44,6 +44,20 @@ function readNDJSON(filePath) {
   })
 }
 
+/** Extract unique actors in chronological (first-seen) order from events array. */
+function extractActors(events) {
+  const seen = new Set()
+  const actors = []
+  for (const ev of events) {
+    const actor = ev.actor
+    if (actor && typeof actor === 'string' && !seen.has(actor)) {
+      seen.add(actor)
+      actors.push(actor)
+    }
+  }
+  return actors
+}
+
 /** Append one line to the audit log. Creates dir/file if needed. */
 function auditLog(entry) {
   try {
@@ -86,7 +100,9 @@ router.get('/', async (_req, res) => {
         const { readFileSync } = await import('fs')
         const contract = JSON.parse(readFileSync(join(TASKS_DIR, id, 'contract.json'), 'utf8'))
         const status = JSON.parse(readFileSync(join(TASKS_DIR, id, 'status.json'), 'utf8'))
-        tasks.push({ task_id: id, contract, status })
+        const events = await readNDJSON(join(TASKS_DIR, id, 'events.ndjson'))
+        const actors = extractActors(events)
+        tasks.push({ task_id: id, contract, status, actors })
       } catch { /* skip unreadable tasks */ }
     }
     res.json(tasks)
@@ -114,8 +130,9 @@ router.get('/:id', async (req, res) => {
       readNDJSON(join(dir, 'events.ndjson')),
       readNDJSON(join(dir, 'decision-log.jsonl')),
     ])
+    const actors = extractActors(events)
 
-    res.json({ task_id: id, contract, status, events, decisions })
+    res.json({ task_id: id, contract, status, events, decisions, actors })
   } catch (e) {
     res.status(500).json({ ok: false, error: 'INTERNAL', detail: e.message })
   }

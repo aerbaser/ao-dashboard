@@ -90,6 +90,16 @@ export default function TopBar({ status, onMenuToggle }: TopBarProps) {
         </span>
       </Pill>
 
+      {/* Awaiting owner pill */}
+      {status?.awaiting_owner_count != null && status.awaiting_owner_count > 0 && (
+        <Pill onClick={() => navigate('/')} className="hidden sm:flex">
+          {status?.awaiting_owner_overdue && (
+            <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-red animate-pulse-critical" />
+          )}
+          <span className="text-xs text-amber">⏳ {status.awaiting_owner_count}</span>
+        </Pill>
+      )}
+
       {/* Active tasks pill */}
       <Pill onClick={() => navigate('/')} className="hidden sm:flex">
         <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${

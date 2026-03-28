@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { readFile } from 'fs/promises'
+import { readFile, readdir } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -12,6 +12,7 @@ const router = Router()
 let cachedResult = null
 let cachedAt = 0
 const CACHE_TTL_MS = 4000 // cache for 4s (poll is 5s)
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 
 async function readCpuTemp() {
   try {
@@ -102,6 +103,38 @@ async function assembleStatus() {
     // cache not available — return null (UI shows '—')
   }
 
+  // AWAITING_OWNER scanning — count tasks in that state and check 4h threshold
+  let awaitingOwnerCount = 0
+  let awaitingOwnerOverdue = false
+  try {
+    const tasksDir = join(homedir(), 'clawd/tasks')
+    const entries = await readdir(tasksDir)
+    const tskEntries = entries.filter(e => e.startsWith('tsk_'))
+    const taskResults = await Promise.all(
+      tskEntries.map(async (entry) => {
+        try {
+          const statusPath = join(tasksDir, entry, 'status.json')
+          const raw = await readFile(statusPath, 'utf-8')
+          return JSON.parse(raw)
+        } catch {
+          return null
+        }
+      })
+    )
+    for (const taskStatus of taskResults) {
+      if (!taskStatus || taskStatus.state !== 'AWAITING_OWNER') continue
+      awaitingOwnerCount++
+      if (taskStatus.updated_at) {
+        const updatedAtMs = new Date(taskStatus.updated_at).getTime()
+        if (!isNaN(updatedAtMs) && (now - updatedAtMs) > FOUR_HOURS_MS) {
+          awaitingOwnerOverdue = true
+        }
+      }
+    }
+  } catch {
+    // tasks dir not available
+  }
+
   const result = {
     gateway_up: gatewayUp,
     agents_alive: agentsAlive,
@@ -114,6 +147,8 @@ async function assembleStatus() {
     cpu_temp: cpuTemp,
     claude_usage_percent: claudeUsagePercent,
     codex_usage_percent: codexUsagePercent,
+    awaiting_owner_count: awaitingOwnerCount,
+    awaiting_owner_overdue: awaitingOwnerOverdue,
     timestamp: new Date().toISOString(),
   }
 

@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, TransitionError } from '../../lib/types';
 import CopyButton from '../ui/CopyButton';
+import FlowStrip from './FlowStrip';
 
 function timeAgo(minutes: number | null): string {
   if (minutes === null || minutes === undefined) return '—';
@@ -35,6 +36,12 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
   const isActive = task.state === 'EXECUTION' || task.state === 'SETUP';
   const isCritical = task.state === 'BLOCKED' || task.state === 'FAILED';
 
+  // AWAITING_OWNER urgency: normal, urgent (>2h), overdue (>4h)
+  const isAwaiting = task.state === 'AWAITING_OWNER';
+  const awaitingMinutes = isAwaiting ? (task.age ?? 0) : 0;
+  const isOverdue = isAwaiting && awaitingMinutes >= 240; // >4h
+  const isUrgent = isAwaiting && !isOverdue && awaitingMinutes >= 120; // >2h
+
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <div
@@ -44,6 +51,10 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
           hover:bg-bg-elevated transition-colors duration-100
           ${isActive ? 'animate-pulse-active' : ''}
           ${isCritical ? 'animate-pulse-critical' : ''}
+          ${isAwaiting ? 'border-l-2' : ''}
+          ${isOverdue ? 'border-l-red animate-pulse-critical' : ''}
+          ${isUrgent ? 'border-l-amber animate-pulse-active ring-1 ring-amber/30' : ''}
+          ${isAwaiting && !isUrgent && !isOverdue ? 'border-l-amber' : ''}
         `}
         onClick={() => onClick(task)}
       >
@@ -57,6 +68,11 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
           <span>{task.id}</span>
           <CopyButton text={task.id} />
         </p>
+
+        {/* Flow Strip */}
+        {task.actors && task.actors.length > 0 && (
+          <FlowStrip actors={task.actors} />
+        )}
 
         {/* Badges row */}
         <div className="flex items-center gap-1.5 mt-2 flex-wrap">
@@ -105,6 +121,13 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
             )}
           </div>
         </div>
+
+        {/* Awaiting Owner bar */}
+        {task.state === 'AWAITING_OWNER' && (
+          <div className="mt-2 px-2 py-1 rounded-sm bg-amber/10 text-amber text-xs font-medium">
+            💬 Awaiting your input
+          </div>
+        )}
       </div>
 
       {/* Inline error card for guard violations */}

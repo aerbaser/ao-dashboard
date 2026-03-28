@@ -3,6 +3,8 @@ import type { Task, TaskEvent, TaskDecision, TaskContract } from '../../lib/type
 import { PIPELINE_STATES } from '../../lib/types';
 import { fetchTaskEvents, fetchTaskDecisions, fetchTaskContract, transitionTask, addTaskEvent } from '../../lib/api';
 import { EventTimeline } from './EventTimeline';
+import { CommentThread } from './CommentThread';
+import { CommentInput } from './CommentInput';
 
 interface TaskDetailProps {
   task: Task;
@@ -71,6 +73,17 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
 
   // Subdirectories for artifacts
   const artifactDirs = ['issue-contracts', 'outputs', 'execution-bundles', 'review-findings'];
+
+  const commentList: import('../../lib/types').CommentEvent[] = events
+    .filter((e) => e.event_type === 'USER_COMMENT' || e['type'] === 'USER_COMMENT')
+    .map((e) => {
+      const payload = e['payload'] as { body?: string; actor?: string } | undefined;
+      return {
+        actor: e.actor || payload?.actor || 'unknown',
+        body: (e['body'] as string) || payload?.body || '',
+        timestamp: e.timestamp,
+      };
+    });
 
   return (
     <>
@@ -141,6 +154,21 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
                 Event Timeline
               </h3>
               <EventTimeline events={events} />
+            </section>
+
+            {/* Comments */}
+            <section>
+              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                Comments
+              </h3>
+              <CommentThread comments={commentList} />
+              {task.state === 'AWAITING_OWNER' && (
+                <div className="mt-3">
+                  <CommentInput taskId={task.id} onCommentAdded={() => {
+                    fetchTaskEvents(task.id).catch(() => []).then(setEvents);
+                  }} />
+                </div>
+              )}
             </section>
 
             {/* Decision Log */}

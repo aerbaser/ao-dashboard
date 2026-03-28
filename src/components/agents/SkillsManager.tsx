@@ -137,7 +137,7 @@ export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) 
               <span key={s} className="text-emerald font-mono mr-1">+{s}</span>
             ))}
             {changes.removed.map(s => (
-              <span key={s} className="text-ao-red font-mono mr-1">-{s}</span>
+              <span key={s} className="text-red font-mono mr-1">-{s}</span>
             ))}
           </span>
           <button
@@ -151,7 +151,7 @@ export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) 
             disabled={applying}
             className="px-3 py-1 rounded text-[11px] font-semibold bg-accent-amber text-text-inverse hover:bg-accent-amber/90 disabled:opacity-40 transition-colors"
           >
-            {applying ? 'Applying...' : 'Apply & Restart'}
+            {applying ? 'Applying...' : 'Apply'}
           </button>
         </div>
       )}

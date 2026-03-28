@@ -103,6 +103,7 @@ function toTask(item: TaskListResponse): Task {
     hasRelease: false,
     state_entered_at: s.updated_at || s.last_material_update || undefined,
     contract: c,
+    actors: (item as any).actors || [],
   };
 }
 

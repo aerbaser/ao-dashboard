@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, TransitionError } from '../../lib/types';
 import CopyButton from '../ui/CopyButton';
+import FlowStrip from './FlowStrip';
 
 function timeAgo(minutes: number | null): string {
   if (minutes === null || minutes === undefined) return '—';
@@ -57,6 +58,11 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
           <span>{task.id}</span>
           <CopyButton text={task.id} />
         </p>
+
+        {/* Flow Strip */}
+        {task.actors && task.actors.length > 0 && (
+          <FlowStrip actors={task.actors} />
+        )}
 
         {/* Badges row */}
         <div className="flex items-center gap-1.5 mt-2 flex-wrap">

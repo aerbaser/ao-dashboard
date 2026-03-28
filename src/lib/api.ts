@@ -345,3 +345,70 @@ export function switchRateLimitProfile(profile: string): Promise<{ ok: boolean; 
     body: JSON.stringify({ profile }),
   })
 }
+
+// ─── Ideas ──────────────────────────────────────────────────────────────────
+
+export interface Idea {
+  id: string
+  title: string
+  body: string
+  status: 'draft' | 'brainstorming' | 'artifact_ready' | 'approved' | 'in_work' | 'archived'
+  created_at: string
+  updated_at: string
+  tags: string[]
+  target_agent: string
+  target_project: string
+  artifact_md: string | null
+  artifact_generated_at: string | null
+  task_id: string | null
+  brainstorm_session_id: string | null
+}
+
+export function fetchIdeas(): Promise<Idea[]> {
+  return fetchJson<Idea[]>('/ideas')
+}
+
+export function fetchIdea(id: string): Promise<Idea> {
+  return fetchJson<Idea>(`/ideas/${id}`)
+}
+
+export function createIdea(data: {
+  title: string
+  body: string
+  target_agent?: string
+  target_project?: string
+  tags?: string[]
+}): Promise<Idea> {
+  return request<Idea>('/ideas', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateIdea(
+  id: string,
+  data: Partial<Pick<Idea, 'title' | 'body' | 'tags' | 'status' | 'artifact_md'>>
+): Promise<Idea> {
+  return request<Idea>(`/ideas/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export function approveIdea(id: string): Promise<{ ok: true; task_id: string }> {
+  return request<{ ok: true; task_id: string }>(`/ideas/${id}/approve`, {
+    method: 'POST',
+  })
+}
+
+export function brainstormIdea(id: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/ideas/${id}/brainstorm`, {
+    method: 'POST',
+  })
+}
+
+export function archiveIdea(id: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/ideas/${id}/archive`, {
+    method: 'POST',
+  })
+}

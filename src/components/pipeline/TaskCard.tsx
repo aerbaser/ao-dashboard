@@ -111,6 +111,13 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
             )}
           </div>
         </div>
+
+        {/* Awaiting Owner bar */}
+        {task.state === 'AWAITING_OWNER' && (
+          <div className="mt-2 px-2 py-1 rounded-sm bg-amber/10 text-amber text-xs font-medium">
+            💬 Awaiting your input
+          </div>
+        )}
       </div>
 
       {/* Inline error card for guard violations */}

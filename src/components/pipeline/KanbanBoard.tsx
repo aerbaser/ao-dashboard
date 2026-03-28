@@ -75,10 +75,14 @@ function KanbanColumn({ state, tasks, onCardClick, errors, loading }: KanbanColu
     >
       {/* Column header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle">
-        <div
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: color }}
-        />
+        {state === 'AWAITING_OWNER' ? (
+          <span className="text-sm shrink-0" title="Awaiting Owner">⏳</span>
+        ) : (
+          <div
+            className="w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: color }}
+          />
+        )}
         <span className="text-sm font-medium text-text-primary truncate">
           {state.replace(/_/g, ' ')}
         </span>
@@ -143,7 +147,22 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading, hideEmpty 
   );
 
   const tasksByState = useCallback(
-    (state: PipelineState) => tasks.filter((t) => t.state === state),
+    (state: PipelineState) => {
+      const filtered = tasks.filter((t) => t.state === state);
+      if (state === 'AWAITING_OWNER') {
+        // Sort: deadline_at ASC (urgent first), fallback updated_at DESC
+        return filtered.sort((a, b) => {
+          const aDeadline = a.contract?.created_at; // proxy for deadline
+          const bDeadline = b.contract?.created_at;
+          if (aDeadline && bDeadline) return aDeadline.localeCompare(bDeadline);
+          if (aDeadline) return -1;
+          if (bDeadline) return 1;
+          // Fallback: updated_at desc (newer first) via age (lower age = more recent)
+          return (a.age ?? Infinity) - (b.age ?? Infinity);
+        });
+      }
+      return filtered;
+    },
     [tasks]
   );
 

@@ -36,6 +36,12 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
   const isActive = task.state === 'EXECUTION' || task.state === 'SETUP';
   const isCritical = task.state === 'BLOCKED' || task.state === 'FAILED';
 
+  // AWAITING_OWNER urgency: normal, urgent (>2h), overdue (>4h)
+  const isAwaiting = task.state === 'AWAITING_OWNER';
+  const awaitingMinutes = isAwaiting ? (task.age ?? 0) : 0;
+  const isOverdue = isAwaiting && awaitingMinutes >= 240; // >4h
+  const isUrgent = isAwaiting && !isOverdue && awaitingMinutes >= 120; // >2h
+
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <div
@@ -45,6 +51,10 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
           hover:bg-bg-elevated transition-colors duration-100
           ${isActive ? 'animate-pulse-active' : ''}
           ${isCritical ? 'animate-pulse-critical' : ''}
+          ${isAwaiting ? 'border-l-2' : ''}
+          ${isOverdue ? 'border-l-red animate-pulse-critical' : ''}
+          ${isUrgent ? 'border-l-amber animate-pulse-active ring-1 ring-amber/30' : ''}
+          ${isAwaiting && !isUrgent && !isOverdue ? 'border-l-amber' : ''}
         `}
         onClick={() => onClick(task)}
       >

@@ -68,6 +68,13 @@ export interface TaskEvent {
   [key: string]: unknown;
 }
 
+/** Parsed comment for display in CommentThread */
+export interface CommentEvent {
+  actor: string;
+  body: string;
+  timestamp: string;
+}
+
 export interface TaskDecision {
   decision_id: string;
   task_id: string;

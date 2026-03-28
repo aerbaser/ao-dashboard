@@ -1,5 +1,0 @@
-# Pending Improvements
-
-## Open
-
-## Done

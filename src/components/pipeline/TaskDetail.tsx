@@ -74,13 +74,16 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
   // Subdirectories for artifacts
   const artifactDirs = ['issue-contracts', 'outputs', 'execution-bundles', 'review-findings'];
 
-  const commentList = events
-    .filter((e) => e.event_type === 'USER_COMMENT' || (e as Record<string, unknown>)['type'] === 'USER_COMMENT')
-    .map((e) => ({
-      actor: e.actor,
-      body: ((e as Record<string, unknown>)['body'] as string | undefined) || ((e as Record<string, unknown>)['payload'] as { body?: string } | undefined)?.body || '',
-      timestamp: e.timestamp,
-    }));
+  const commentList: import('../../lib/types').CommentEvent[] = events
+    .filter((e) => e.event_type === 'USER_COMMENT' || e['type'] === 'USER_COMMENT')
+    .map((e) => {
+      const payload = e['payload'] as { body?: string; actor?: string } | undefined;
+      return {
+        actor: e.actor || payload?.actor || 'unknown',
+        body: (e['body'] as string) || payload?.body || '',
+        timestamp: e.timestamp,
+      };
+    });
 
   return (
     <>

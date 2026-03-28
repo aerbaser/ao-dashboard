@@ -61,6 +61,7 @@ export default {
           PLANNING:       '#FB923C',
           SETUP:          '#FBBF24',
           EXECUTION:      '#F5A623',
+          AWAITING_OWNER: '#F59E0B',
           REVIEW_PENDING: '#34D399',
           CI_PENDING:     '#22C55E',
           QUALITY_GATE:   '#10B981',

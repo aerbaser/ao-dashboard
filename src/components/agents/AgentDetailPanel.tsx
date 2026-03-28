@@ -4,6 +4,8 @@ import type { AgentInfo } from '../../lib/api'
 import { fetchAgentFile, saveAgentFile } from '../../lib/api'
 import AgentAvatar from './AgentAvatar'
 import type { ToastPayload } from '../../hooks/useToast'
+import SkillsManager from './SkillsManager'
+import ModelSelector from './ModelSelector'
 
 const TABS = ['Skills', 'Files', 'Model'] as const
 type Tab = (typeof TABS)[number]
@@ -98,26 +100,10 @@ export default function AgentDetailPanel({ agent, onClose, onToast }: AgentDetai
 
       {/* Tab content */}
       <div className="p-4 min-h-[200px]">
-        {tab === 'Skills' && <SkillsPlaceholder />}
+        {tab === 'Skills' && <SkillsManager agentId={agent.id} onToast={onToast} />}
         {tab === 'Files' && <FilesTab agentId={agent.id} onToast={onToast} />}
-        {tab === 'Model' && <ModelPlaceholder />}
+        {tab === 'Model' && <ModelSelector agent={agent} currentModel={agent.model ?? ''} onToast={onToast} />}
       </div>
-    </div>
-  )
-}
-
-function SkillsPlaceholder() {
-  return (
-    <div className="text-sm text-text-tertiary py-8 text-center">
-      Skills management coming soon (#73)
-    </div>
-  )
-}
-
-function ModelPlaceholder() {
-  return (
-    <div className="text-sm text-text-tertiary py-8 text-center">
-      Model selector coming soon (#74)
     </div>
   )
 }

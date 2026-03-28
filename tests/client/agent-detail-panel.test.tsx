@@ -22,6 +22,10 @@ const mockAgent: AgentInfo = {
   mailbox: { inbox: 2, processing: 1, done: 5, deadletter: 0 },
 }
 
+// Mock SkillsManager and ModelSelector
+vi.mock('../../src/components/agents/SkillsManager', () => ({ default: () => <div data-testid="skills-manager-mock">SkillsManager</div> }))
+vi.mock('../../src/components/agents/ModelSelector', () => ({ default: () => <div data-testid="model-selector-mock">ModelSelector</div> }))
+
 // Mock the API module
 vi.mock('../../src/lib/api', async () => {
   const actual = await vi.importActual('../../src/lib/api')
@@ -71,10 +75,10 @@ describe('AgentDetailPanel', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('Skills tab shows placeholder by default', () => {
+  it('Skills tab renders SkillsManager', () => {
     render(<AgentDetailPanel agent={mockAgent} onClose={onClose} onToast={onToast} />)
 
-    expect(screen.getByText(/Skills management coming soon/)).toBeInTheDocument()
+    expect(screen.getByTestId('skills-manager-mock')).toBeInTheDocument()
   })
 
   it('switches to Files tab and loads files', async () => {
@@ -89,11 +93,26 @@ describe('AgentDetailPanel', () => {
     })
   })
 
-  it('switches to Model tab and shows placeholder', () => {
+  it('Model tab renders ModelSelector', () => {
     render(<AgentDetailPanel agent={mockAgent} onClose={onClose} onToast={onToast} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Model' }))
-    expect(screen.getByText(/Model selector coming soon/)).toBeInTheDocument()
+    expect(screen.getByTestId('model-selector-mock')).toBeInTheDocument()
+  })
+
+  it('no "coming soon" text appears in any tab', () => {
+    render(<AgentDetailPanel agent={mockAgent} onClose={onClose} onToast={onToast} />)
+
+    // Overview (Skills) tab — default
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
+
+    // Skills tab (already on it by default, but be explicit)
+    fireEvent.click(screen.getByRole('button', { name: 'Skills' }))
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
+
+    // Model tab
+    fireEvent.click(screen.getByRole('button', { name: 'Model' }))
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
   })
 
   it('Files tab: shows unsaved indicator after editing', async () => {

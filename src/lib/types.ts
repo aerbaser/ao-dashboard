@@ -137,6 +137,30 @@ export interface TaskListItem {
   state_entered_at?: string;
 }
 
+// ─── Ideas ───────────────────────────────────────────────────────────────────
+
+export const IDEA_STATUSES = [
+  'draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived',
+] as const;
+
+export type IdeaStatus = (typeof IDEA_STATUSES)[number];
+
+export interface Idea {
+  id: string;
+  title: string;
+  body: string;
+  status: IdeaStatus;
+  created_at: string;
+  updated_at: string;
+  tags: string[];
+  target_agent: string;
+  target_project: string | null;
+  artifact_md: string | null;
+  artifact_generated_at: string | null;
+  task_id: string | null;
+  brainstorm_session_id: string | null;
+}
+
 export type ServiceGroup = 'Core' | 'Agents' | 'Integrations';
 export type ServiceStatus = 'active' | 'inactive' | 'failed' | 'activating' | 'deactivating';
 

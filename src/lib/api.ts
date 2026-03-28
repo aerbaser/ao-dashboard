@@ -12,6 +12,7 @@ import type {
   CronResponse,
   VitalsResponse,
   RateLimitsResponse,
+  Idea,
 } from './types';
 
 const BASE = '/api';
@@ -259,6 +260,54 @@ export async function moveEnvelope(agentId: string, fromFolder: string, toFolder
     body: JSON.stringify({ to: toFolder }),
   });
   return res.json();
+}
+
+// ─── Ideas ───────────────────────────────────────────────────────────────────
+
+export function getIdeas(): Promise<Idea[]> {
+  return fetchJson<Idea[]>('/ideas')
+}
+
+export function getIdea(id: string): Promise<Idea> {
+  return fetchJson<Idea>(`/ideas/${id}`)
+}
+
+export function createIdea(data: {
+  title: string;
+  body?: string;
+  tags?: string[];
+  target_agent?: string;
+  target_project?: string;
+}): Promise<Idea> {
+  return request<Idea>('/ideas', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateIdea(id: string, data: Partial<Idea>): Promise<Idea> {
+  return request<Idea>(`/ideas/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteIdea(id: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/ideas/${id}`, { method: 'DELETE' })
+}
+
+export function triggerBrainstorm(id: string, targetAgent?: string): Promise<{ ok: true; status: string; idea_id: string }> {
+  return request<{ ok: true; status: string; idea_id: string }>(`/ideas/${id}/brainstorm`, {
+    method: 'POST',
+    body: JSON.stringify({ target_agent: targetAgent }),
+  })
+}
+
+export function submitArtifact(id: string, artifactMd: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/ideas/${id}/artifact`, {
+    method: 'POST',
+    body: JSON.stringify({ artifact_md: artifactMd }),
+  })
 }
 
 // ─── Logs ────────────────────────────────────────────────────────────────────

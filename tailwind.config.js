@@ -122,6 +122,10 @@ export default {
           '0%, 100%': { boxShadow: '0 0 4px rgba(52,199,89,0.2)' },
           '50%': { boxShadow: '0 0 8px rgba(52,199,89,0.5)' },
         },
+        'pulse-glow-blue': {
+          '0%, 100%': { boxShadow: '0 0 4px rgba(96,165,250,0.2)' },
+          '50%': { boxShadow: '0 0 10px rgba(96,165,250,0.5)' },
+        },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
@@ -139,6 +143,7 @@ export default {
         'pulse-active': 'pulse-glow 2.5s ease-in-out infinite',
         'pulse-critical': 'pulse-glow-critical 1.2s ease-in-out infinite',
         'pulse-healthy': 'pulse-glow-healthy 3s ease-in-out infinite',
+        'pulse-blue': 'pulse-glow-blue 2s ease-in-out infinite',
         skeleton: 'shimmer 1.8s linear infinite',
         'fade-in': 'fadeIn 150ms ease',
         'slide-in-right': 'slideInRight 200ms cubic-bezier(0.16,1,0.3,1)',

@@ -9,6 +9,17 @@ const IDEAS_DIR = join(HOME, 'clawd/ideas')
 
 const VALID_STATUSES = ['draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived']
 const VALID_AGENTS = ['brainstorm-claude', 'brainstorm-codex', 'sokrat']
+const VALID_ID_RE = /^idea_\d{8}_[a-f0-9]{6}$/
+
+/** Validate idea :id param — prevents path traversal */
+function validateId(req, res) {
+  const { id } = req.params
+  if (!VALID_ID_RE.test(id)) {
+    res.status(400).json({ error: `Invalid idea id format: ${id}` })
+    return false
+  }
+  return true
+}
 
 async function ensureDir() {
   await mkdir(IDEAS_DIR, { recursive: true })
@@ -86,6 +97,7 @@ router.post('/', async (req, res) => {
 
 // PUT /api/ideas/:id — update idea
 router.put('/:id', async (req, res) => {
+  if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
     const existing = await safeReadJson(filePath)
@@ -113,6 +125,7 @@ router.put('/:id', async (req, res) => {
 
 // POST /api/ideas/:id/approve — transition to approved, optionally create task
 router.post('/:id/approve', async (req, res) => {
+  if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
     const existing = await safeReadJson(filePath)
@@ -136,6 +149,7 @@ router.post('/:id/approve', async (req, res) => {
 
 // DELETE /api/ideas/:id — archive (soft delete)
 router.delete('/:id', async (req, res) => {
+  if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
     const existing = await safeReadJson(filePath)

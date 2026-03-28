@@ -1,107 +1,65 @@
 // @vitest-environment node
+/**
+ * Tests exercise the ACTUAL agents router (server/api/agents.js).
+ *
+ * Strategy: stub HOME before importing the router so it resolves paths
+ * to our temp directory. The router reads HEARTBEATS_DIR and
+ * MAILBOXES_DIR at module scope using homedir()/process.env.HOME.
+ */
 import express from 'express'
 import request from 'supertest'
-import { describe, expect, it, beforeEach } from 'vitest'
-import { mkdtemp, writeFile, readFile, rm } from 'fs/promises'
+import { describe, expect, it, beforeAll, afterAll } from 'vitest'
+import { mkdtemp, readFile, rm } from 'fs/promises'
+import { writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
-// We test the route logic by building a minimal app with the agents router.
-// The router reads heartbeat files to find workspace_path, so we mock the fs.
-
 let tempDir: string
+let workspaceDir: string
+let app: express.Express
+let originalHome: string
 
-async function buildTestApp() {
+beforeAll(async () => {
   tempDir = await mkdtemp(join(tmpdir(), 'agents-files-test-'))
-  const heartbeatsDir = join(tempDir, 'heartbeats')
-  const workspaceDir = join(tempDir, 'workspace-archimedes')
 
-  const { mkdirSync, writeFileSync } = await import('fs')
+  // Mimic directory layout the router expects
+  const heartbeatsDir = join(tempDir, 'clawd', 'runtime', 'heartbeats')
+  const mailboxesDir = join(tempDir, 'clawd', 'runtime', 'mailboxes')
+  workspaceDir = join(tempDir, '.openclaw', 'workspace-archimedes')
+
   mkdirSync(heartbeatsDir, { recursive: true })
+  mkdirSync(mailboxesDir, { recursive: true })
   mkdirSync(workspaceDir, { recursive: true })
 
-  // Write heartbeat with workspace_path
+  // Write heartbeat pointing to our workspace
   writeFileSync(join(heartbeatsDir, 'archimedes.json'), JSON.stringify({
     state: 'active',
     workspace_path: workspaceDir,
     updated_at: new Date().toISOString(),
   }))
 
-  // Write test workspace files
+  // Write workspace files
   writeFileSync(join(workspaceDir, 'AGENTS.md'), '# Archimedes Agent\nTest content')
   writeFileSync(join(workspaceDir, 'SOUL.md'), '# Soul doc')
   writeFileSync(join(workspaceDir, 'TOOLS.md'), '# Tools doc')
 
-  // We need to override the HOME env for the router
-  const originalHome = process.env.HOME
+  // Stub HOME BEFORE importing router — module resolves paths at import time
+  originalHome = process.env.HOME!
   process.env.HOME = tempDir
 
-  // Clear module cache and re-import
-  // Since the router reads HOME at module level, we need dynamic import with cache busting
-  // Instead, we test via HTTP directly using supertest against the running server
+  const { default: agentsRouter } = await import('../../server/api/agents.js')
 
-  // Build a minimal express app that mimics the router behavior
-  const app = express()
+  app = express()
   app.use(express.json())
+  app.use('/api/agents', agentsRouter)
+})
 
-  const VALID_WORKSPACE_FILES = ['AGENTS.md', 'SOUL.md', 'TOOLS.md']
-  const AGENT_IDS = ['archimedes', 'sokrat', 'aristotle']
+afterAll(async () => {
+  process.env.HOME = originalHome
+  await rm(tempDir, { recursive: true, force: true })
+})
 
-  // GET file
-  app.get('/api/agents/:id/files/:filename', async (req, res) => {
-    const { id, filename } = req.params
-    if (!VALID_WORKSPACE_FILES.includes(filename)) {
-      return res.status(400).json({ error: `File not allowed: ${filename}` })
-    }
-    if (!AGENT_IDS.includes(id)) {
-      return res.status(404).json({ error: `Unknown agent: ${id}` })
-    }
-    const filePath = join(workspaceDir, filename)
-    try {
-      const content = await readFile(filePath, 'utf-8')
-      res.json({ content, filename, path: filePath })
-    } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-        return res.json({ content: '', filename, path: filePath })
-      }
-      res.status(500).json({ error: (err as Error).message })
-    }
-  })
-
-  // PUT file
-  app.put('/api/agents/:id/files/:filename', async (req, res) => {
-    const { id, filename } = req.params
-    const { content } = req.body
-    if (!VALID_WORKSPACE_FILES.includes(filename)) {
-      return res.status(400).json({ ok: false, error: `File not allowed: ${filename}` })
-    }
-    if (typeof content !== 'string') {
-      return res.status(400).json({ ok: false, error: 'content must be a string' })
-    }
-    if (!AGENT_IDS.includes(id)) {
-      return res.status(404).json({ ok: false, error: `Unknown agent: ${id}` })
-    }
-    const filePath = join(workspaceDir, filename)
-    try {
-      await writeFile(filePath, content, 'utf-8')
-      res.json({ ok: true, filename, path: filePath })
-    } catch (err: unknown) {
-      res.status(500).json({ ok: false, error: (err as Error).message })
-    }
-  })
-
-  return { app, workspaceDir, cleanup: () => { process.env.HOME = originalHome; return rm(tempDir, { recursive: true, force: true }) } }
-}
-
-describe('agents files API', () => {
-  let app: express.Express
-  let workspaceDir: string
-  beforeEach(async () => {
-    const result = await buildTestApp()
-    app = result.app
-    workspaceDir = result.workspaceDir
-  })
-
+describe('agents files API (actual router)', () => {
   it('GET reads a whitelisted workspace file', async () => {
     const res = await request(app).get('/api/agents/archimedes/files/AGENTS.md')
     expect(res.status).toBe(200)
@@ -121,9 +79,8 @@ describe('agents files API', () => {
   })
 
   it('GET returns empty content for nonexistent file', async () => {
-    // Remove TOOLS.md
     const { unlink } = await import('fs/promises')
-    await unlink(join(workspaceDir, 'TOOLS.md'))
+    await unlink(join(workspaceDir, 'TOOLS.md')).catch(() => {})
 
     const res = await request(app).get('/api/agents/archimedes/files/TOOLS.md')
     expect(res.status).toBe(200)
@@ -142,7 +99,6 @@ describe('agents files API', () => {
     expect(res.status).toBe(200)
     expect(res.body.ok).toBe(true)
 
-    // Verify file was written
     const written = await readFile(join(workspaceDir, 'AGENTS.md'), 'utf-8')
     expect(written).toBe('# Updated\nNew content')
   })

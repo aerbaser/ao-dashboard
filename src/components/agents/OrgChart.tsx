@@ -70,8 +70,8 @@ const ROOT_W = 80
 const ROOT_H = 100
 const CHILD_DIAMETER = 48
 const CHILD_R = CHILD_DIAMETER / 2
-const CHILD_ROW_H = 64
-const GAP_X = 60
+const CHILD_ROW_H = 80
+const GAP_X = 80
 
 function getSubtreeHeight(node: TreeNode): number {
   if (node.children.length === 0) return CHILD_ROW_H

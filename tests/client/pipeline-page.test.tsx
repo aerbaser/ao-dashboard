@@ -63,6 +63,31 @@ describe('Pipeline page', () => {
     expect(screen.getByText(/Updated/)).toBeInTheDocument()
   })
 
+  it('item with section=in_progress + status=blocked appears only in Blocked column', () => {
+    vi.mocked(usePolling).mockReturnValue({
+      data: [
+        { id: 'x1', title: 'Ambiguous task', description: null, status: 'blocked', checkbox: '!', section: 'in_progress' },
+      ],
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      refresh: vi.fn(),
+    })
+    render(<Pipeline />)
+
+    // Should appear exactly once across the whole page
+    const cards = screen.getAllByText('Ambiguous task')
+    expect(cards).toHaveLength(1)
+
+    // The Blocked column count should be (1)
+    const blockedHeader = screen.getByText(/🔴 Blocked/)
+    expect(blockedHeader.textContent).toContain('(1)')
+
+    // In Progress column count should be (0)
+    const inProgressHeader = screen.getByText(/🟡 In Progress/)
+    expect(inProgressHeader.textContent).toContain('(0)')
+  })
+
   it('hideEmpty toggle hides empty columns', () => {
     render(<Pipeline />)
 

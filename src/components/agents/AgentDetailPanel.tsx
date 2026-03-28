@@ -100,7 +100,7 @@ export default function AgentDetailPanel({ agent, onClose, onToast }: AgentDetai
 
       {/* Tab content */}
       <div className="p-4 min-h-[200px]">
-        {tab === 'Skills' && <SkillsManager agentId={agent.id} onToast={onToast} />}
+        {tab === 'Skills' && <SkillsManager agentId={agent.id} initialSkills={agent.skills ?? []} onToast={onToast} />}
         {tab === 'Files' && <FilesTab agentId={agent.id} onToast={onToast} />}
         {tab === 'Model' && <ModelSelector agent={agent} currentModel={agent.model ?? ''} onToast={onToast} />}
       </div>

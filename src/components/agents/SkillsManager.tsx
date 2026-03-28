@@ -1,36 +1,35 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { fetchAgentSkills, updateAgentSkills, fetchAllSkills } from '../../lib/api'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { updateAgentSkills, fetchAllSkills } from '../../lib/api'
 import type { SkillsData } from '../../lib/api'
 import type { ToastPayload } from '../../hooks/useToast'
 
 interface SkillsManagerProps {
   agentId: string
+  initialSkills: string[]
   onToast: (toast: ToastPayload) => void
 }
 
-export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) {
+export default function SkillsManager({ agentId, initialSkills, onToast }: SkillsManagerProps) {
+  const toastRef = useRef(onToast)
+  toastRef.current = onToast
+
   const [allSkills, setAllSkills] = useState<SkillsData | null>(null)
-  const [activeSkills, setActiveSkills] = useState<string[] | null>(null)
-  const [pendingSkills, setPendingSkills] = useState<Set<string> | null>(null)
+  const [activeSkills, setActiveSkills] = useState<string[]>(initialSkills)
+  const [pendingSkills, setPendingSkills] = useState<Set<string>>(new Set(initialSkills))
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const [skillsData, agentData] = await Promise.all([
-        fetchAllSkills(),
-        fetchAgentSkills(agentId),
-      ])
+      const skillsData = await fetchAllSkills()
       setAllSkills(skillsData)
-      setActiveSkills(agentData.skills)
-      setPendingSkills(new Set(agentData.skills))
     } catch {
-      onToast({ message: 'Failed to load skills', variant: 'error' })
+      toastRef.current({ message: 'Failed to load skills', variant: 'error' })
     } finally {
       setLoading(false)
     }
-  }, [agentId, onToast])
+  }, [agentId])
 
   useEffect(() => { load() }, [load])
 
@@ -48,13 +47,12 @@ export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) 
 
   // Skills currently toggled on in the pending set
   const pendingArray = useMemo(
-    () => (pendingSkills ? [...pendingSkills].sort() : []),
+    () => [...pendingSkills].sort(),
     [pendingSkills],
   )
 
   // Compute changes from original
   const changes = useMemo(() => {
-    if (!activeSkills || !pendingSkills) return { added: [] as string[], removed: [] as string[] }
     const activeSet = new Set(activeSkills)
     const added = pendingArray.filter(s => !activeSet.has(s))
     const removed = activeSkills.filter(s => !pendingSkills.has(s))
@@ -65,13 +63,11 @@ export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) 
 
   // Skills not currently in pending set (for the Add dropdown)
   const unassignedSkills = useMemo(() => {
-    if (!pendingSkills) return []
     return allSkillNames.filter(s => !pendingSkills.has(s))
   }, [allSkillNames, pendingSkills])
 
   const toggleSkill = (name: string) => {
     setPendingSkills(prev => {
-      if (!prev) return prev
       const next = new Set(prev)
       if (next.has(name)) {
         // Don't allow removing the last skill
@@ -86,7 +82,6 @@ export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) 
 
   const addSkill = (name: string) => {
     setPendingSkills(prev => {
-      if (!prev) return prev
       const next = new Set(prev)
       next.add(name)
       return next
@@ -95,7 +90,6 @@ export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) 
   }
 
   const handleApply = async () => {
-    if (!pendingSkills) return
     setApplying(true)
     try {
       const result = await updateAgentSkills(agentId, [...pendingSkills])
@@ -114,17 +108,11 @@ export default function SkillsManager({ agentId, onToast }: SkillsManagerProps) 
   }
 
   const handleDiscard = () => {
-    if (activeSkills) {
-      setPendingSkills(new Set(activeSkills))
-    }
+    setPendingSkills(new Set(activeSkills))
   }
 
   if (loading) {
     return <div className="text-[11px] text-text-tertiary py-4 text-center">Loading skills...</div>
-  }
-
-  if (!pendingSkills || !activeSkills) {
-    return <div className="text-[12px] text-text-tertiary py-8 text-center">Could not load skills</div>
   }
 
   return (

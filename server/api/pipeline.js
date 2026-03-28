@@ -55,7 +55,7 @@ function parseTodo(raw) {
     const id = `todo_${String(counter).padStart(3, '0')}`
     counter++
 
-    items.push({ id, title, description, status, checkbox, section: currentSection })
+    items.push({ id, title, description, status, checkbox, section: currentSection, owner: 'unassigned' })
   }
 
   return items

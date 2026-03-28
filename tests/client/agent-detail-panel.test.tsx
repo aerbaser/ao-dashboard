@@ -18,12 +18,13 @@ const mockAgent: AgentInfo = {
   workspace_path: '/home/test/.openclaw/workspace-archimedes',
   topic_id: null,
   model: 'opus-4-6',
+  skills: ['core', 'code-review'],
   heartbeat_raw: null,
   mailbox: { inbox: 2, processing: 1, done: 5, deadletter: 0 },
 }
 
 // Mock SkillsManager and ModelSelector
-vi.mock('../../src/components/agents/SkillsManager', () => ({ default: () => <div data-testid="skills-manager-mock">SkillsManager</div> }))
+vi.mock('../../src/components/agents/SkillsManager', () => ({ default: ({ initialSkills }: { initialSkills: string[] }) => <div data-testid="skills-manager-mock" data-initial-skills={initialSkills.join(',')}>SkillsManager</div> }))
 vi.mock('../../src/components/agents/ModelSelector', () => ({ default: () => <div data-testid="model-selector-mock">ModelSelector</div> }))
 
 // Mock the API module

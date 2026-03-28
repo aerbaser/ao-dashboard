@@ -28,7 +28,9 @@ function PipelineCard({ item }: { item: PipelineItem }) {
       {item.description && <div className="text-xs text-text-secondary mt-1">{item.description}</div>}
       <div className="flex items-center gap-2 mt-2">
         <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${badgeColor}`}>{item.status}</span>
-        {item.owner && <span className="text-[10px] text-text-tertiary font-mono">{item.owner}</span>}
+        <span className={`text-[10px] font-mono ${item.owner === "unassigned" ? "text-text-disabled" : "text-text-tertiary"}`}>
+          {item.owner ?? "unassigned"}
+        </span>
         {item.source === 'task-store' && <span className="text-[10px] text-text-disabled">task-store</span>}
       </div>
     </div>
@@ -38,10 +40,10 @@ function PipelineCard({ item }: { item: PipelineItem }) {
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-  { key: 'blocked', label: '🔴 Blocked', filter: (i: PipelineItem) => i.section === 'blocked' || i.status === 'blocked' },
-  { key: 'in_progress', label: '🟡 In Progress', filter: (i: PipelineItem) => i.section === 'in_progress' && i.status !== 'completed' },
-  { key: 'open_questions', label: '❓ Open Questions', filter: (i: PipelineItem) => i.section === 'open_questions' },
-  { key: 'done', label: '✅ Done', filter: (i: PipelineItem) => i.section === 'done' || i.status === 'completed' },
+  { key: 'blocked', label: '🔴 Blocked', filter: (i: PipelineItem) => i.status === 'blocked' },
+  { key: 'in_progress', label: '🟡 In Progress', filter: (i: PipelineItem) => i.status !== 'blocked' && i.status !== 'completed' && (i.section === 'in_progress' || i.section === 'open') },
+  { key: 'open_questions', label: '❓ Open Questions', filter: (i: PipelineItem) => i.status !== 'blocked' && i.status !== 'completed' && i.section === 'open_questions' },
+  { key: 'done', label: '✅ Done', filter: (i: PipelineItem) => i.status === 'completed' },
 ] as const
 
 // ─── Pipeline Page ────────────────────────────────────────────────────────────
@@ -80,11 +82,11 @@ export default function Pipeline() {
       </div>
       {/* Columns */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-4 gap-4 h-full">
+        <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 h-full">
           {visibleColumns.map(col => {
             const colItems = items.filter(col.filter)
             return (
-              <div key={col.key} className="flex flex-col gap-2">
+              <div key={col.key} className="flex flex-col gap-2 min-w-[200px] flex-shrink-0 sm:min-w-0 sm:flex-shrink">
                 <div className="text-sm font-semibold text-text-secondary mb-2">
                   {col.label} <span className="text-text-disabled font-normal">({colItems.length})</span>
                 </div>

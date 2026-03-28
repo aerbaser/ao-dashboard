@@ -35,9 +35,12 @@ function generateId() {
   return `idea_${date}_${rand}`
 }
 
+const VALID_ID_RE = /^idea_\d{8}_[a-f0-9]{6}$/
+
 async function loadIdea(id) {
+  if (!VALID_ID_RE.test(id)) return null
   const files = await readdir(IDEAS_DIR).catch(() => [])
-  const file = files.find(f => f.includes(id) && f.endsWith('.json'))
+  const file = files.find(f => f === `${id}.json`)
   if (!file) return null
   return safeReadJson(join(IDEAS_DIR, file))
 }
@@ -139,9 +142,10 @@ router.patch('/:id', async (req, res) => {
 
 // DELETE /:id — delete idea
 router.delete('/:id', async (req, res) => {
+  if (!VALID_ID_RE.test(req.params.id)) return res.status(400).json({ error: 'Invalid idea id' })
   try {
     const files = await readdir(IDEAS_DIR).catch(() => [])
-    const file = files.find(f => f.includes(req.params.id) && f.endsWith('.json'))
+    const file = files.find(f => f === `${req.params.id}.json`)
     if (!file) return res.status(404).json({ error: 'Idea not found' })
 
     await unlink(join(IDEAS_DIR, file))
@@ -180,11 +184,14 @@ router.post('/:id/brainstorm', async (req, res) => {
     // Try sessions-send first, fall back to mailbox file write
     if (existsSync(SESSIONS_SEND)) {
       try {
+        const ac = new AbortController()
         await new Promise((resolve, reject) => {
-          execFile('node', [SESSIONS_SEND, targetAgent, message], { timeout: 30000 }, (err, stdout, stderr) => {
+          const child = execFile('node', [SESSIONS_SEND, targetAgent, message], { timeout: 30000, signal: ac.signal }, (err, stdout, stderr) => {
             if (err) reject(new Error(stderr || err.message))
             else resolve(stdout)
           })
+          // Ensure cleanup on request abort
+          setTimeout(() => ac.abort(), 30000)
         })
       } catch {
         // Fall back to mailbox write

@@ -30,6 +30,13 @@ const navItems: NavItem[] = [
     badgeColor: 'red',
   },
   {
+    to: '/ideas',
+    label: 'Ideas',
+    icon: '💡',
+    badge: () => null,
+    badgeColor: 'amber',
+  },
+  {
     to: '/agents',
     label: 'Agents',
     icon: '🤖',

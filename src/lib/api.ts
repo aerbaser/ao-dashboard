@@ -287,6 +287,30 @@ export async function changeAgentModel(
   return res.json()
 }
 
+// ─── Skills ──────────────────────────────────────────────────────────────────
+
+export async function fetchAgentSkills(agentId: string): Promise<{ skills: string[] }> {
+  return fetchJson<{ skills: string[] }>(`/agents/${agentId}/skills`);
+}
+
+export async function updateAgentSkills(agentId: string, skills: string[]): Promise<{ ok: boolean; skills: string[]; error?: string }> {
+  return request<{ ok: boolean; skills: string[]; error?: string }>(`/agents/${agentId}/skills`, {
+    method: 'PUT',
+    body: JSON.stringify({ skills }),
+  });
+}
+
+export interface SkillInfo {
+  name: string;
+  description: string;
+}
+
+export type SkillsData = Record<string, SkillInfo[]>;
+
+export async function fetchAllSkills(): Promise<SkillsData> {
+  return fetchJson<SkillsData>('/skills');
+}
+
 // ─── Logs ────────────────────────────────────────────────────────────────────
 
 export interface GatewayLogResponse {

@@ -1,244 +1,234 @@
-// Ideas API — CRUD for ~/clawd/ideas/ directory
 import { Router } from 'express'
 import { readdir, readFile, writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
 import { join } from 'path'
+import { randomBytes } from 'crypto'
 import { execFile } from 'child_process'
+import { existsSync } from 'fs'
 
 const router = Router()
+const HOME = process.env.HOME || '/home/aiadmin'
+const IDEAS_DIR = join(HOME, 'clawd/ideas')
+const SESSIONS_SEND = join(HOME, 'clawd/scripts/sessions-send.js')
+const MAILBOXES_DIR = join(HOME, 'clawd/runtime/mailboxes')
 
+const VALID_STATUSES = ['draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived']
+const VALID_AGENTS = ['brainstorm-claude', 'brainstorm-codex', 'sokrat']
 const VALID_ID_RE = /^idea_\d{8}_[a-f0-9]{6}$/
 
 /** Validate idea :id param — prevents path traversal */
 function validateId(req, res) {
-  if (!VALID_ID_RE.test(req.params.id)) {
-    res.status(400).json({ error: `Invalid idea id format: ${req.params.id}` })
+  const { id } = req.params
+  if (!VALID_ID_RE.test(id)) {
+    res.status(400).json({ error: `Invalid idea id format: ${id}` })
     return false
   }
   return true
 }
 
-const IDEAS_DIR = join(process.env.HOME, 'clawd/ideas')
-const TASK_STORE = join(process.env.HOME, 'clawd/scripts/task-store.js')
-const COMM_DIR = join(
-  process.env.HOME,
-  '.openclaw/shared-memory/communication'
-)
-
-/** Ensure ideas directory exists. */
 async function ensureDir() {
-  if (!existsSync(IDEAS_DIR)) {
-    await mkdir(IDEAS_DIR, { recursive: true })
+  await mkdir(IDEAS_DIR, { recursive: true })
+}
+
+async function safeReadJson(filePath) {
+  try {
+    const raw = await readFile(filePath, 'utf-8')
+    return JSON.parse(raw)
+  } catch {
+    return null
   }
 }
 
-/** Read a single idea JSON file. */
-async function readIdea(filePath) {
-  const raw = await readFile(filePath, 'utf8')
-  return JSON.parse(raw)
+function generateId() {
+  const now = new Date()
+  const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+  const hex = randomBytes(3).toString('hex')
+  return `idea_${date}_${hex}`
 }
 
-/** Write idea JSON to disk. */
-async function writeIdea(idea) {
-  await ensureDir()
-  const filePath = join(IDEAS_DIR, `${idea.id}.json`)
-  await writeFile(filePath, JSON.stringify(idea, null, 2), 'utf8')
-}
-
-/** Generate a unique idea ID. */
-function makeId() {
-  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const r = Math.random().toString(36).slice(2, 8)
-  return `idea_${d}_${r}`
-}
-
-/** Run task-store.js with args. */
-function runTaskStore(args) {
-  return new Promise((resolve, reject) => {
-    execFile('node', [TASK_STORE, ...args], { timeout: 15_000 }, (err, stdout, stderr) => {
-      if (err) reject({ stdout, stderr: stderr || err.message })
-      else resolve({ stdout, stderr })
-    })
-  })
-}
-
-// ─── GET / — list all ideas ──────────────────────────────────────────────────
-
-router.get('/', async (_req, res) => {
+// GET /api/ideas — list all (with optional ?status= filter)
+router.get('/', async (req, res) => {
   try {
     await ensureDir()
     const files = await readdir(IDEAS_DIR)
-    const ideas = []
-    for (const f of files) {
-      if (!f.endsWith('.json')) continue
-      try {
-        ideas.push(await readIdea(join(IDEAS_DIR, f)))
-      } catch { /* skip malformed */ }
-    }
-    ideas.sort((a, b) => (b.updated_at || b.created_at).localeCompare(a.updated_at || a.created_at))
-    res.json(ideas)
+    const jsonFiles = files.filter(f => f.endsWith('.json'))
+
+    const ideas = (await Promise.all(
+      jsonFiles.map(f => safeReadJson(join(IDEAS_DIR, f)))
+    )).filter(Boolean)
+
+    const statusFilter = req.query.status
+    const filtered = statusFilter
+      ? ideas.filter(i => i.status === statusFilter)
+      : ideas
+
+    // Sort by updated_at descending
+    filtered.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+
+    res.json(filtered)
   } catch (err) {
-    res.status(500).json({ error: 'Failed to list ideas', detail: String(err) })
+    res.status(500).json({ error: err.message })
   }
 })
 
-// ─── POST / — create idea ───────────────────────────────────────────────────
-
+// POST /api/ideas — create new idea
 router.post('/', async (req, res) => {
   try {
-    const { title, body, target_agent, target_project, tags } = req.body
-    if (!title) return res.status(400).json({ error: 'title is required' })
+    await ensureDir()
+    const { title, body, tags, target_agent } = req.body
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'title is required' })
+    }
+
     const now = new Date().toISOString()
     const idea = {
-      id: makeId(),
-      title,
-      body: body || '',
+      id: generateId(),
+      title: title.trim(),
+      body: (body || '').trim(),
       status: 'draft',
+      tags: Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : [],
+      target_agent: VALID_AGENTS.includes(target_agent) ? target_agent : 'brainstorm-claude',
       created_at: now,
       updated_at: now,
-      tags: tags || [],
-      target_agent: target_agent || 'brainstorm-claude',
-      target_project: target_project || '',
-      artifact_md: null,
-      artifact_generated_at: null,
-      task_id: null,
-      brainstorm_session_id: null,
     }
-    await writeIdea(idea)
+
+    await writeFile(join(IDEAS_DIR, `${idea.id}.json`), JSON.stringify(idea, null, 2))
     res.status(201).json(idea)
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create idea', detail: String(err) })
+    res.status(500).json({ error: err.message })
   }
 })
 
-// ─── GET /:id — get single idea ─────────────────────────────────────────────
-
-router.get('/:id', async (req, res) => {
+// PUT /api/ideas/:id — update idea
+router.put('/:id', async (req, res) => {
   if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
-    if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
-    const idea = await readIdea(filePath)
-    res.json(idea)
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to read idea', detail: String(err) })
-  }
-})
-
-// ─── PATCH /:id — update idea fields ────────────────────────────────────────
-
-router.patch('/:id', async (req, res) => {
-  try {
-    const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
-    if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
-    const idea = await readIdea(filePath)
-    const allowed = ['title', 'body', 'tags', 'status', 'artifact_md']
-    for (const key of allowed) {
-      if (req.body[key] !== undefined) idea[key] = req.body[key]
+    const existing = await safeReadJson(filePath)
+    if (!existing) {
+      return res.status(404).json({ error: 'idea not found' })
     }
-    idea.updated_at = new Date().toISOString()
-    await writeIdea(idea)
-    res.json(idea)
+
+    const { title, body, status, tags, target_agent, artifact, task_id } = req.body
+
+    if (title !== undefined) existing.title = title.trim()
+    if (body !== undefined) existing.body = body.trim()
+    if (status !== undefined && VALID_STATUSES.includes(status)) existing.status = status
+    if (tags !== undefined) existing.tags = Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : existing.tags
+    if (target_agent !== undefined && VALID_AGENTS.includes(target_agent)) existing.target_agent = target_agent
+    if (artifact !== undefined) existing.artifact = artifact
+    if (task_id !== undefined) existing.task_id = task_id
+
+    existing.updated_at = new Date().toISOString()
+    await writeFile(filePath, JSON.stringify(existing, null, 2))
+    res.json(existing)
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update idea', detail: String(err) })
+    res.status(500).json({ error: err.message })
   }
 })
 
-// ─── POST /:id/brainstorm — trigger brainstorm agent ────────────────────────
-
-router.post('/:id/brainstorm', async (req, res) => {
-  if (!validateId(req, res)) return
-  try {
-    const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
-    if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
-    const idea = await readIdea(filePath)
-
-    // Write brainstorm request to agent inbox
-    const inboxPath = join(COMM_DIR, `inbox_${idea.target_agent || 'brainstorm-claude'}.md`)
-    await mkdir(join(COMM_DIR), { recursive: true })
-    const msg = `## [IDEA-BRAINSTORM] ${idea.id}\n\n**Title:** ${idea.title}\n**Body:** ${idea.body}\n**Context:** ${(idea.tags || []).join(', ')}, ${idea.target_project || 'unspecified'}\n\nProduce: design doc / brainstorm artifact.\nWrite result to: ~/clawd/ideas/${idea.id}.json field artifact_md.\nUpdate status to artifact_ready.\n`
-    const { appendFile } = await import('fs/promises')
-    await appendFile(inboxPath, '\n---\n' + msg, 'utf8')
-
-    idea.status = 'brainstorming'
-    idea.updated_at = new Date().toISOString()
-    await writeIdea(idea)
-    res.json({ ok: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to trigger brainstorm', detail: String(err) })
-  }
-})
-
-// ─── POST /:id/approve — create task from idea ─────────────────────────────
-
+// POST /api/ideas/:id/approve — transition to approved, optionally create task
 router.post('/:id/approve', async (req, res) => {
   if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
-    if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
-    const idea = await readIdea(filePath)
-
-    if (!idea.artifact_md) {
-      return res.status(400).json({ error: 'Cannot approve idea without artifact' })
+    const existing = await safeReadJson(filePath)
+    if (!existing) {
+      return res.status(404).json({ error: 'idea not found' })
     }
 
-    // Create task via task-store.js
-    const result = await runTaskStore([
-      'create',
-      '--title', idea.title,
-      '--route', 'artifact_route',
-      '--outcome-type', 'strategy_doc',
-    ])
+    existing.status = 'approved'
+    existing.updated_at = new Date().toISOString()
 
-    // Parse task_id from stdout (task-store.js outputs JSON or task_id line)
-    let taskId
-    try {
-      const parsed = JSON.parse(result.stdout)
-      taskId = parsed.task_id || parsed.id
-    } catch {
-      // Fallback: extract tsk_xxx from output
-      const match = result.stdout.match(/tsk_\w+/)
-      taskId = match ? match[0] : null
+    if (req.body.task_id) {
+      existing.task_id = req.body.task_id
     }
 
-    if (!taskId) {
-      return res.status(500).json({ error: 'Task created but could not parse task_id', stdout: result.stdout })
-    }
-
-    // Write decomposition request to Platon inbox
-    const platonInbox = join(COMM_DIR, 'inbox_platon.md')
-    await mkdir(join(COMM_DIR), { recursive: true })
-    const { appendFile } = await import('fs/promises')
-    const decompMsg = `## [DECOMPOSITION-REQUEST] ${taskId}\n\nIdea: ${idea.id}\nTitle: ${idea.title}\nArtifact: available in ~/clawd/ideas/${idea.id}.json\n\nPlease decompose this into subtasks.\n`
-    await appendFile(platonInbox, '\n---\n' + decompMsg, 'utf8')
-
-    // Update idea
-    idea.status = 'in_work'
-    idea.task_id = taskId
-    idea.updated_at = new Date().toISOString()
-    await writeIdea(idea)
-
-    res.json({ ok: true, task_id: taskId })
+    await writeFile(filePath, JSON.stringify(existing, null, 2))
+    res.json(existing)
   } catch (err) {
-    res.status(500).json({ error: 'Failed to approve idea', detail: String(err) })
+    res.status(500).json({ error: err.message })
   }
 })
 
-// ─── POST /:id/archive — archive idea ──────────────────────────────────────
-
-router.post('/:id/archive', async (req, res) => {
+// DELETE /api/ideas/:id — archive (soft delete)
+router.delete('/:id', async (req, res) => {
   if (!validateId(req, res)) return
   try {
     const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
-    if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
-    const idea = await readIdea(filePath)
-    idea.status = 'archived'
-    idea.updated_at = new Date().toISOString()
-    await writeIdea(idea)
-    res.json({ ok: true })
+    const existing = await safeReadJson(filePath)
+    if (!existing) {
+      return res.status(404).json({ error: 'idea not found' })
+    }
+
+    existing.status = 'archived'
+    existing.updated_at = new Date().toISOString()
+    await writeFile(filePath, JSON.stringify(existing, null, 2))
+    res.json(existing)
   } catch (err) {
-    res.status(500).json({ error: 'Failed to archive idea', detail: String(err) })
+    res.status(500).json({ error: err.message })
   }
 })
+
+async function writeToMailbox(agentId, idea) {
+  const dir = join(MAILBOXES_DIR, agentId, 'inbox')
+  await mkdir(dir, { recursive: true })
+  const envelope = {
+    id: `brainstorm_${idea.id}`,
+    from: 'sokrat',
+    type: 'brainstorm_request',
+    subject: `Brainstorm: ${idea.title}`,
+    priority: 'P2',
+    created_at: new Date().toISOString(),
+    payload: { idea_id: idea.id, title: idea.title, body: idea.body },
+  }
+  await writeFile(join(dir, `${envelope.id}.json`), JSON.stringify(envelope, null, 2))
+}
+
+// POST /:id/brainstorm — trigger brainstorm agent
+router.post('/:id/brainstorm', async (req, res) => {
+  try {
+    const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
+    if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
+    const idea = JSON.parse(await readFile(filePath, 'utf-8'))
+    if (idea.status !== 'draft') {
+      return res.status(400).json({ error: `Cannot brainstorm: idea status is "${idea.status}", expected "draft"` })
+    }
+    const targetAgent = req.body.target_agent || idea.target_agent || 'brainstorm-claude'
+    idea.status = 'brainstorming'
+    idea.updated_at = new Date().toISOString()
+    await writeFile(filePath, JSON.stringify(idea, null, 2))
+    if (existsSync(SESSIONS_SEND)) {
+      try {
+        await new Promise((resolve, reject) => {
+          execFile('node', [SESSIONS_SEND, targetAgent, JSON.stringify({ type: 'brainstorm_request', idea_id: idea.id })], { timeout: 30000 }, (err, _stdout, stderr) => {
+            if (err) reject(new Error(stderr || err.message)); else resolve()
+          })
+        })
+      } catch { await writeToMailbox(targetAgent, idea) }
+    } else {
+      await writeToMailbox(targetAgent, idea)
+    }
+    res.status(202).json({ ok: true, status: 'brainstorming', idea_id: idea.id })
+  } catch (err) { res.status(500).json({ error: String(err) }) }
+})
+
+// POST /:id/artifact — receive artifact from brainstorm agent
+router.post('/:id/artifact', async (req, res) => {
+  try {
+    const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
+    if (!existsSync(filePath)) return res.status(404).json({ error: 'Idea not found' })
+    const idea = JSON.parse(await readFile(filePath, 'utf-8'))
+    const { artifact_md } = req.body
+    if (!artifact_md || typeof artifact_md !== 'string') return res.status(400).json({ error: 'artifact_md is required' })
+    idea.artifact_md = artifact_md
+    idea.artifact_generated_at = new Date().toISOString()
+    idea.status = 'artifact_ready'
+    idea.updated_at = new Date().toISOString()
+    await writeFile(filePath, JSON.stringify(idea, null, 2))
+    res.json({ ok: true, status: 'artifact_ready', idea_id: idea.id })
+  } catch (err) { res.status(500).json({ error: String(err) }) }
+})
+
 
 export default router

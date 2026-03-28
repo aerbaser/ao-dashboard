@@ -4,9 +4,10 @@ import type { AgentInfo } from '../../lib/api'
 import { fetchAgentInboxMd, fetchAgentLog, fetchAgentEvents, sendAgentMessage, wakeAgent } from '../../lib/api'
 import AgentAvatar from './AgentAvatar'
 import MailboxViewer from './MailboxViewer'
+import SkillsManager from './SkillsManager'
 import type { ToastPayload } from '../../hooks/useToast'
 
-const TABS = ['Mailbox', 'INBOX.md', 'Comm Log', 'Events', 'Info'] as const
+const TABS = ['Mailbox', 'Skills', 'INBOX.md', 'Comm Log', 'Events', 'Info'] as const
 
 interface AgentDetailProps {
   agent: AgentInfo
@@ -118,6 +119,9 @@ export default function AgentDetail({ agent, onClose, onToast }: AgentDetailProp
         <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
           {tab === 'Mailbox' && (
             <MailboxViewer agentId={agent.id} onToast={onToast} />
+          )}
+          {tab === 'Skills' && (
+            <SkillsManager agentId={agent.id} onToast={onToast} />
           )}
           {tab === 'INBOX.md' && (
             <InboxMdTab agentId={agent.id} />

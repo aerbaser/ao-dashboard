@@ -137,6 +137,7 @@ export default function ModelSelector({ agent, currentModel, onToast }: ModelSel
         open={selectedModel !== null}
         title="Model Change — Gateway Restart Required"
         confirmText={agent.id}
+        confirmLabel="Confirm Change"
         variant="danger"
         onConfirm={handleConfirm}
         onCancel={handleCancel}

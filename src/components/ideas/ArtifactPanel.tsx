@@ -143,7 +143,7 @@ export default function ArtifactPanel({ artifact, ideaId, onApprove }: ArtifactP
         <ConfirmDialog
           title="Approve Idea"
           message="This will create a task from this idea and notify Платон for decomposition."
-          confirmText="Approve"
+          confirmLabel="Approve"
           onConfirm={handleApprove}
           onCancel={() => setShowConfirm(false)}
           variant="warning"

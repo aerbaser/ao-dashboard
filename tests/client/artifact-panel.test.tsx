@@ -53,7 +53,7 @@ describe('ConfirmDialog', () => {
         onCancel={onCancel}
       />
     )
-    fireEvent.click(screen.getByTestId('confirm-overlay'))
+    fireEvent.click(screen.getByTestId('confirm-dialog-backdrop'))
     expect(onCancel).toHaveBeenCalledOnce()
   })
 

@@ -38,6 +38,9 @@ export default {
         blue:          '#60A5FA',
         'blue-dim':    '#1E3A5F',
         'blue-subtle': 'rgba(96,165,250,0.12)',
+        indigo:          '#818CF8',
+        'indigo-dim':    '#3730A3',
+        'indigo-subtle': 'rgba(129,140,248,0.12)',
         accent: {
           purple:         '#A78BFA',
           'purple-dim':   '#4C1D95',

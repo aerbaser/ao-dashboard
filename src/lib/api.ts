@@ -68,6 +68,7 @@ interface TaskListResponse {
     last_material_update?: string;
     [key: string]: unknown;
   };
+  actors?: string[];
 }
 
 interface TaskDetailResponse extends TaskListResponse {
@@ -103,7 +104,7 @@ function toTask(item: TaskListResponse): Task {
     hasRelease: false,
     state_entered_at: s.updated_at || s.last_material_update || undefined,
     contract: c,
-    actors: (item as any).actors || [],
+    actors: item.actors || [],
   };
 }
 

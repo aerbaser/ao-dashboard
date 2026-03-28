@@ -63,11 +63,15 @@ function KanbanColumn({ state, tasks, onCardClick, errors, loading }: KanbanColu
       ref={setNodeRef}
       className={`
         flex-shrink-0 w-[260px] flex flex-col rounded-lg border-t-2
+        ${state === 'AWAITING_OWNER' ? 'border-l-2' : ''}
         ${isOver ? 'bg-bg-overlay' : 'bg-bg-void'}
         ${tasks.length === 0 && !loading ? 'opacity-50' : ''}
         transition-colors duration-100
       `}
-      style={{ borderTopColor: color }}
+      style={{
+        borderTopColor: color,
+        ...(state === 'AWAITING_OWNER' ? { borderLeftColor: color } : {}),
+      }}
     >
       {/* Column header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle">
@@ -95,7 +99,11 @@ function KanbanColumn({ state, tasks, onCardClick, errors, loading }: KanbanColu
         </div>
       ) : tasks.length === 0 ? (
         <div className="flex-1 p-2">
-          <EmptyState icon="○" title={`No tasks in ${state}`} />
+          {state === 'AWAITING_OWNER' ? (
+            <EmptyState icon="✦" title="Nothing waiting — you are clear" />
+          ) : (
+            <EmptyState icon="○" title={`No tasks in ${state}`} />
+          )}
         </div>
       ) : (
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>

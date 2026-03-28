@@ -22,6 +22,7 @@ vi.mock('../../src/components/agents/AgentGrid', () => ({
           session_key: null,
           workspace_path: null,
           topic_id: null,
+          model: null,
           heartbeat_raw: null,
           mailbox: { inbox: 0, processing: 0, done: 0, deadletter: 0 },
         })}
@@ -32,8 +33,8 @@ vi.mock('../../src/components/agents/AgentGrid', () => ({
   },
 }))
 
-vi.mock('../../src/components/agents/AgentDetail', () => ({
-  default: function MockAgentDetail({
+vi.mock('../../src/components/agents/AgentDetailPanel', () => ({
+  default: function MockAgentDetailPanel({
     onToast,
   }: {
     onToast: (toast: { message: string; variant: 'success' | 'error' | 'warning' | 'info' }) => void

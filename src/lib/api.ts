@@ -201,6 +201,7 @@ export interface AgentInfo {
   session_key: string | null;
   workspace_path: string | null;
   topic_id: number | null;
+  model: string | null;
   heartbeat_raw: Record<string, unknown> | null;
   mailbox: { inbox: number; processing: number; done: number; deadletter: number };
 }
@@ -249,6 +250,18 @@ export async function sendAgentMessage(agentId: string, message: string): Promis
 }
 export async function wakeAgent(agentId: string): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch(`${BASE}/agents/${agentId}/wake`, { method: 'POST' });
+  return res.json();
+}
+export async function fetchAgentFile(agentId: string, filename: string): Promise<{ content: string; filename: string; path: string }> {
+  const res = await fetch(`${BASE}/agents/${agentId}/files/${encodeURIComponent(filename)}`);
+  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
+  return res.json();
+}
+export async function saveAgentFile(agentId: string, filename: string, content: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/agents/${agentId}/files/${encodeURIComponent(filename)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
   return res.json();
 }
 export async function deleteEnvelope(agentId: string, folder: string, envelopeId: string): Promise<{ ok: boolean; error?: string }> {

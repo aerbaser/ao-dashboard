@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { readdir, readFile, unlink, rename, mkdir } from 'fs/promises'
+import { readdir, readFile, writeFile, unlink, rename, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { execFile } from 'child_process'
 import { existsSync } from 'fs'
@@ -26,6 +26,10 @@ const AGENT_META = [
 ]
 
 const VALID_FOLDERS = ['inbox', 'processing', 'done', 'deadletter']
+
+// Whitelist of workspace files that can be read/written via the files API.
+// Prevents path traversal — only exact basenames are allowed.
+const VALID_WORKSPACE_FILES = ['AGENTS.md', 'SOUL.md', 'TOOLS.md']
 
 async function safeReadJson(filePath) {
   try {
@@ -85,6 +89,8 @@ router.get('/', async (_req, res) => {
           progress_note: heartbeat?.progress_note ?? null,
           checkpoint_safe: heartbeat?.checkpoint_safe ?? null,
           last_seen: heartbeat?.updated_at ?? null,
+          workspace_path: heartbeat?.workspace_path ?? null,
+          model: heartbeat?.model ?? null,
           mailbox,
         }
       })
@@ -248,6 +254,72 @@ router.post('/:id/mailbox/:folder/:envelopeId/move', async (req, res) => {
     if (err.code === 'ENOENT') {
       return res.status(404).json({ ok: false, error: 'Envelope not found' })
     }
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// ─── Workspace file endpoints ─────────────────────────────────────────────────
+
+function resolveWorkspacePath(agentId) {
+  // Convention: workspace is at ~/.openclaw/workspace-{agentId}/
+  return join(HOME, `.openclaw/workspace-${agentId}`)
+}
+
+// GET /api/agents/:id/files/:filename — read a workspace file
+router.get('/:id/files/:filename', async (req, res) => {
+  const { id, filename } = req.params
+
+  if (!VALID_WORKSPACE_FILES.includes(filename)) {
+    return res.status(400).json({ error: `File not allowed: ${filename}. Allowed: ${VALID_WORKSPACE_FILES.join(', ')}` })
+  }
+
+  const meta = AGENT_META.find(a => a.id === id)
+  if (!meta) {
+    return res.status(404).json({ error: `Unknown agent: ${id}` })
+  }
+
+  // Try heartbeat workspace_path first, fall back to convention
+  const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${id}.json`))
+  const wsPath = heartbeat?.workspace_path || resolveWorkspacePath(id)
+  const filePath = join(wsPath, filename)
+
+  try {
+    const content = await readFile(filePath, 'utf-8')
+    res.json({ content, filename, path: filePath })
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return res.json({ content: '', filename, path: filePath })
+    }
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PUT /api/agents/:id/files/:filename — write a workspace file
+router.put('/:id/files/:filename', async (req, res) => {
+  const { id, filename } = req.params
+  const { content } = req.body
+
+  if (!VALID_WORKSPACE_FILES.includes(filename)) {
+    return res.status(400).json({ ok: false, error: `File not allowed: ${filename}. Allowed: ${VALID_WORKSPACE_FILES.join(', ')}` })
+  }
+
+  if (typeof content !== 'string') {
+    return res.status(400).json({ ok: false, error: 'content must be a string' })
+  }
+
+  const meta = AGENT_META.find(a => a.id === id)
+  if (!meta) {
+    return res.status(404).json({ ok: false, error: `Unknown agent: ${id}` })
+  }
+
+  const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${id}.json`))
+  const wsPath = heartbeat?.workspace_path || resolveWorkspacePath(id)
+  const filePath = join(wsPath, filename)
+
+  try {
+    await writeFile(filePath, content, 'utf-8')
+    res.json({ ok: true, filename, path: filePath })
+  } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }
 })

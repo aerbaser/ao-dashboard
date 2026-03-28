@@ -1,30 +1,109 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Task, PipelineState } from '../../src/lib/types'
 
-// Mock fetchPipelineItems from api
-vi.mock('../../src/lib/api', async () => {
-  const actual = await vi.importActual('../../src/lib/api')
-  return {
-    ...actual,
-    fetchPipelineItems: vi.fn(),
-  }
-})
+// Mock DnD kit — KanbanBoard uses these but DnD behaviour is KanbanBoard's responsibility
+vi.mock('@dnd-kit/core', () => ({
+  DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DragOverlay: () => null,
+  closestCorners: vi.fn(),
+  KeyboardSensor: vi.fn(),
+  PointerSensor: vi.fn(),
+  useSensor: vi.fn(),
+  useSensors: vi.fn(() => []),
+  useDroppable: vi.fn(() => ({ setNodeRef: vi.fn(), isOver: false })),
+}))
+
+vi.mock('@dnd-kit/sortable', () => ({
+  SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  sortableKeyboardCoordinates: vi.fn(),
+  verticalListSortingStrategy: vi.fn(),
+  useSortable: vi.fn(() => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    transform: null,
+    transition: null,
+    isDragging: false,
+  })),
+}))
+
+vi.mock('@dnd-kit/utilities', () => ({
+  CSS: { Transform: { toString: vi.fn(() => '') } },
+}))
+
+// Mock api
+vi.mock('../../src/lib/api', () => ({
+  fetchTasks: vi.fn(),
+  createTask: vi.fn(),
+  transitionTask: vi.fn(),
+}))
 
 // Mock usePolling to return controlled data
 vi.mock('../../src/hooks/usePolling', () => ({
   usePolling: vi.fn(),
 }))
 
+// Mock useToast used inside KanbanBoard
+vi.mock('../../src/hooks/useToast', () => ({
+  useToast: vi.fn(() => ({ showToast: vi.fn() })),
+}))
+
 import Pipeline from '../../src/pages/Pipeline'
 import { usePolling } from '../../src/hooks/usePolling'
 
-const mockItems = [
-  { id: '1', title: 'Blocked task', description: null, status: 'blocked', checkbox: '!', section: 'blocked' },
-  { id: '2', title: 'In progress task', description: 'doing it', status: 'pending', checkbox: ' ', section: 'in_progress' },
-  { id: '3', title: 'Done task', description: null, status: 'completed', checkbox: 'x', section: 'done' },
+const mockTasks: Task[] = [
+  {
+    id: 'tsk_001',
+    state: 'EXECUTION' as PipelineState,
+    owner: 'archimedes',
+    route: 'build_route',
+    title: 'Build feature X',
+    age: 5,
+    ttl: null,
+    blockers: 0,
+    retries: 0,
+    terminal: false,
+    hasQuality: false,
+    hasOutcome: false,
+    hasRelease: false,
+    actors: [],
+  },
+  {
+    id: 'tsk_002',
+    state: 'DONE' as PipelineState,
+    owner: 'sokrat',
+    route: 'build_route',
+    title: 'Deploy service Y',
+    age: 120,
+    ttl: null,
+    blockers: 0,
+    retries: 0,
+    terminal: true,
+    hasQuality: false,
+    hasOutcome: false,
+    hasRelease: false,
+    actors: [],
+  },
+  {
+    id: 'tsk_003',
+    state: 'BLOCKED' as PipelineState,
+    owner: 'platon',
+    route: 'artifact_route',
+    title: 'Design review blocked',
+    age: 30,
+    ttl: null,
+    blockers: 1,
+    retries: 0,
+    terminal: false,
+    hasQuality: false,
+    hasOutcome: false,
+    hasRelease: false,
+    actors: [],
+  },
 ]
 
-describe('Pipeline page', () => {
+describe('Pipeline page (full Kanban)', () => {
   afterEach(() => {
     cleanup()
   })
@@ -32,7 +111,7 @@ describe('Pipeline page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(usePolling).mockReturnValue({
-      data: mockItems,
+      data: mockTasks,
       loading: false,
       error: null,
       refetch: vi.fn(),
@@ -40,70 +119,33 @@ describe('Pipeline page', () => {
     })
   })
 
-  it('renders pipeline columns', () => {
+  it('renders KanbanBoard with pipeline columns', () => {
     render(<Pipeline />)
-
-    expect(screen.getByText(/🔴 Blocked/)).toBeInTheDocument()
-    expect(screen.getByText(/🟡 In Progress/)).toBeInTheDocument()
-    expect(screen.getByText(/❓ Open Questions/)).toBeInTheDocument()
-    expect(screen.getByText(/✅ Done/)).toBeInTheDocument()
+    // Verify the page renders and shows state column headers
+    expect(screen.getByText('EXECUTION')).toBeInTheDocument()
+    expect(screen.getByText('DONE')).toBeInTheDocument()
+    expect(screen.getByText('BLOCKED')).toBeInTheDocument()
   })
 
-  it('shows items in correct columns', () => {
+  it('displays task cards in correct columns', () => {
     render(<Pipeline />)
-
-    expect(screen.getByText('Blocked task')).toBeInTheDocument()
-    expect(screen.getByText('In progress task')).toBeInTheDocument()
-    expect(screen.getByText('Done task')).toBeInTheDocument()
+    expect(screen.getByText('Build feature X')).toBeInTheDocument()
+    expect(screen.getByText('Deploy service Y')).toBeInTheDocument()
+    expect(screen.getByText('Design review blocked')).toBeInTheDocument()
   })
 
   it('shows freshness indicator', () => {
     render(<Pipeline />)
-
     expect(screen.getByText(/Updated/)).toBeInTheDocument()
   })
 
-  it('item with section=in_progress + status=blocked appears only in Blocked column', () => {
-    vi.mocked(usePolling).mockReturnValue({
-      data: [
-        { id: 'x1', title: 'Ambiguous task', description: null, status: 'blocked', checkbox: '!', section: 'in_progress' },
-      ],
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-      refresh: vi.fn(),
-    })
+  it('shows Create Task button', () => {
     render(<Pipeline />)
-
-    // Should appear exactly once across the whole page
-    const cards = screen.getAllByText('Ambiguous task')
-    expect(cards).toHaveLength(1)
-
-    // The Blocked column count should be (1)
-    const blockedHeader = screen.getByText(/🔴 Blocked/)
-    expect(blockedHeader.textContent).toContain('(1)')
-
-    // In Progress column count should be (0)
-    const inProgressHeader = screen.getByText(/🟡 In Progress/)
-    expect(inProgressHeader.textContent).toContain('(0)')
+    expect(screen.getByRole('button', { name: /create task/i })).toBeInTheDocument()
   })
 
-  it('hideEmpty toggle hides empty columns', () => {
+  it('shows task count in header', () => {
     render(<Pipeline />)
-
-    // Before toggling: Open Questions column should be present (no items, but visible)
-    expect(screen.getByText(/❓ Open Questions/)).toBeInTheDocument()
-
-    // Check the "Hide empty" checkbox
-    const checkbox = screen.getByRole('checkbox')
-    fireEvent.click(checkbox)
-
-    // Open Questions column has no items and should be hidden
-    expect(screen.queryByText(/❓ Open Questions/)).not.toBeInTheDocument()
-
-    // Columns with items should still be visible
-    expect(screen.getByText(/🔴 Blocked/)).toBeInTheDocument()
-    expect(screen.getByText(/🟡 In Progress/)).toBeInTheDocument()
-    expect(screen.getByText(/✅ Done/)).toBeInTheDocument()
+    expect(screen.getByText(/3 tasks/)).toBeInTheDocument()
   })
 })

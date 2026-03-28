@@ -2,7 +2,7 @@
 import express from 'express'
 import request from 'supertest'
 import { describe, expect, it, beforeAll, afterAll } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'fs/promises'
+import { mkdtemp, rm } from 'fs/promises'
 import { mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'

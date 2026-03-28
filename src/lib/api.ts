@@ -451,3 +451,21 @@ export function archiveIdea(id: string): Promise<{ ok: true }> {
     method: 'POST',
   })
 }
+
+// ─── Pipeline ────────────────────────────────────────────────────────────────
+
+export interface PipelineItem {
+  id: string
+  title: string
+  description: string | null
+  status: string      // blocked, completed, pending, or from task-store
+  checkbox: string    // "x", " ", "!"
+  section: string     // blocked, in_progress, open_questions, done
+  source?: string     // "task-store" for yaml items
+  owner?: string | null
+  priority?: string | null
+}
+
+export async function fetchPipelineItems(): Promise<PipelineItem[]> {
+  return fetchJson<PipelineItem[]>('/pipeline')
+}

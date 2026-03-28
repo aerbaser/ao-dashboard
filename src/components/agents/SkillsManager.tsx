@@ -29,7 +29,6 @@ export default function SkillsManager({ agentId, initialSkills, onToast }: Skill
     } finally {
       setLoading(false)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => { load() }, [load])

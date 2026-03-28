@@ -61,12 +61,21 @@ function deriveStatus(heartbeat) {
   return 'idle'
 }
 
+function configIdFor(agentId) {
+  if (agentId === 'sokrat') return 'main'
+  return agentId
+}
+
 // GET /api/agents
 router.get('/', async (_req, res) => {
   try {
+    const config = await safeReadJson(OPENCLAW_CONFIG)
+    const configList = config?.agents?.list ?? []
+
     const agents = await Promise.all(
       AGENT_META.map(async (meta) => {
         const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${meta.id}.json`))
+        const configAgent = configList.find(a => a.id === configIdFor(meta.id))
         const mailbox = {
           inbox:      await countFiles(join(MAILBOXES_DIR, meta.id, 'inbox')),
           processing: await countFiles(join(MAILBOXES_DIR, meta.id, 'processing')),
@@ -85,7 +94,8 @@ router.get('/', async (_req, res) => {
           checkpoint_safe: heartbeat?.checkpoint_safe ?? null,
           last_seen: heartbeat?.updated_at ?? null,
           workspace_path: heartbeat?.workspace_path ?? null,
-          model: heartbeat?.model ?? null,
+          model: configAgent?.model?.primary ?? configAgent?.model ?? heartbeat?.model ?? null,
+          skills: configAgent?.skills ?? [],
           mailbox,
         }
       })

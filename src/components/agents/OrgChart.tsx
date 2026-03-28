@@ -9,20 +9,103 @@ interface OrgChartProps {
   onSelectAgent: (agent: AgentInfo) => void
 }
 
-function findRoot(agents: AgentInfo[]): AgentInfo | undefined {
-  return (
-    agents.find(a => a.role === 'orchestrator') ??
-    agents.find(a => a.name === 'main') ??
-    agents[0]
-  )
+const HIERARCHY: Record<string, string | null> = {
+  sokrat: null,
+  aristotle: 'sokrat',
+  herodotus: 'sokrat',
+  'brainstorm-claude': 'sokrat',
+  'brainstorm-codex': 'sokrat',
+  platon: 'sokrat',
+  leo: 'platon',
+  hephaestus: 'sokrat',
+  archimedes: 'hephaestus',
 }
 
-/** Horizontal connector line constants */
+interface TreeNode {
+  agent: AgentInfo
+  children: TreeNode[]
+}
+
+function buildTree(agents: AgentInfo[]): TreeNode | null {
+  const rootId = Object.entries(HIERARCHY).find(([, parent]) => parent === null)?.[0]
+  // Find root agent — by hierarchy id, or fallback to orchestrator role, or first agent
+  const rootAgent = (rootId ? agents.find(a => a.id === rootId) : null)
+    ?? agents.find(a => a.role === 'orchestrator' || a.role === 'Orchestrator')
+    ?? agents[0]
+  if (!rootAgent) return null
+
+  function buildNode(agent: AgentInfo, allAgents: AgentInfo[]): TreeNode {
+    // Children defined by HIERARCHY
+    const hierarchyChildIds = Object.entries(HIERARCHY)
+      .filter(([, parent]) => parent === agent.id)
+      .map(([childId]) => childId)
+    const hierarchyChildren = hierarchyChildIds
+      .map(childId => allAgents.find(a => a.id === childId))
+      .filter((a): a is AgentInfo => a != null)
+      .map(a => buildNode(a, allAgents))
+    return { agent, children: hierarchyChildren }
+  }
+
+  const tree = buildNode(rootAgent, agents)
+
+  // Collect all agent ids rendered in the tree
+  const renderedIds = new Set<string>()
+  function collectIds(node: TreeNode) {
+    renderedIds.add(node.agent.id)
+    node.children.forEach(collectIds)
+  }
+  collectIds(tree)
+
+  // Attach any agents not rendered as direct children of root
+  const orphans = agents.filter(a => !renderedIds.has(a.id))
+  for (const orphan of orphans) {
+    tree.children.push({ agent: orphan, children: [] })
+  }
+
+  return tree
+}
+
+/** Layout constants */
 const ROOT_W = 80
 const ROOT_H = 100
-const CHILD_R = 24 // child circle radius
-const CHILD_ROW_H = 64 // vertical spacing per child
-const GAP_X = 60 // horizontal gap between root edge and child centers
+const CHILD_DIAMETER = 48
+const CHILD_R = CHILD_DIAMETER / 2
+const CHILD_ROW_H = 64
+const GAP_X = 60
+
+function getSubtreeHeight(node: TreeNode): number {
+  if (node.children.length === 0) return CHILD_ROW_H
+  return node.children.reduce((sum, child) => sum + getSubtreeHeight(child), 0)
+}
+
+interface LayoutNode {
+  node: TreeNode
+  x: number
+  y: number
+  isRoot: boolean
+}
+
+function computeLayout(tree: TreeNode): LayoutNode[] {
+  const result: LayoutNode[] = []
+
+  function layout(node: TreeNode, x: number, yStart: number, isRoot: boolean): void {
+    const h = getSubtreeHeight(node)
+    const cy = yStart + h / 2
+    result.push({ node, x, y: cy, isRoot })
+
+    if (node.children.length > 0) {
+      const childX = x + (isRoot ? ROOT_W : CHILD_DIAMETER) + GAP_X
+      let childYStart = yStart
+      for (const child of node.children) {
+        layout(child, childX, childYStart, false)
+        childYStart += getSubtreeHeight(child)
+      }
+    }
+  }
+
+  layout(tree, 0, 0, true)
+  return result
+}
 
 export default function OrgChart({ onSelectAgent }: OrgChartProps) {
   const [agents, setAgents] = useState<AgentInfo[]>([])
@@ -87,19 +170,20 @@ export default function OrgChart({ onSelectAgent }: OrgChartProps) {
     )
   }
 
-  const root = findRoot(agents)!
-  const children = agents.filter(a => a.id !== root.id)
+  const tree = buildTree(agents)
 
-  // --- Mobile vertical layout (< md) ---
-  // --- Desktop horizontal layout (>= md) ---
+  if (!tree) {
+    return (
+      <EmptyState icon="◎" title="No agents found" description="No active agent sessions" />
+    )
+  }
 
   return (
     <div ref={containerRef}>
       {/* Mobile: vertical stack */}
       <div className="flex flex-col gap-3 md:hidden">
         <MobileTree
-          root={root}
-          children={children}
+          tree={tree}
           selectedId={selectedId}
           onSelect={handleSelect}
         />
@@ -108,8 +192,7 @@ export default function OrgChart({ onSelectAgent }: OrgChartProps) {
       {/* Desktop: horizontal tree */}
       <div className="hidden md:block">
         <DesktopTree
-          root={root}
-          children={children}
+          tree={tree}
           selectedId={selectedId}
           onSelect={handleSelect}
         />
@@ -121,105 +204,73 @@ export default function OrgChart({ onSelectAgent }: OrgChartProps) {
 /* ── Desktop horizontal layout ─────────────────────────────────── */
 
 function DesktopTree({
-  root,
-  children,
+  tree,
   selectedId,
   onSelect,
 }: {
-  root: AgentInfo
-  children: AgentInfo[]
+  tree: TreeNode
   selectedId: string | null
   onSelect: (a: AgentInfo) => void
 }) {
-  const childCount = children.length
-  const treeH = Math.max(ROOT_H, childCount * CHILD_ROW_H)
-  const rootY = treeH / 2
-  const childStartX = ROOT_W + GAP_X
-  const svgH = treeH + 16
+  const layout = computeLayout(tree)
+
+  const totalW = Math.max(...layout.map(l => l.x + (l.isRoot ? ROOT_W : CHILD_DIAMETER))) + 100
+  const totalH = Math.max(...layout.map(l => l.y + (l.isRoot ? ROOT_H / 2 : CHILD_R))) + 20
+
+  function drawLines(node: TreeNode, parentLayout?: LayoutNode): React.ReactNode[] {
+    const lines: React.ReactNode[] = []
+    const myLayout = layout.find(l => l.node === node)!
+
+    if (parentLayout) {
+      const pRightX = parentLayout.x + (parentLayout.isRoot ? ROOT_W : CHILD_DIAMETER)
+      const midX = pRightX + GAP_X / 2
+      const isActive = node.agent.status === 'active'
+      const stroke = isActive ? '#22C55E' : '#403E3C'
+      const strokeW = isActive ? 1.5 : 1
+      lines.push(
+        <g key={`line-${node.agent.id}`}>
+          <line x1={pRightX} y1={parentLayout.y} x2={midX} y2={parentLayout.y} stroke={stroke} strokeWidth={strokeW} />
+          <line x1={midX} y1={parentLayout.y} x2={midX} y2={myLayout.y} stroke={stroke} strokeWidth={strokeW} />
+          <line x1={midX} y1={myLayout.y} x2={myLayout.x - CHILD_R - 4} y2={myLayout.y} stroke={stroke} strokeWidth={strokeW} />
+          <polygon points={arrowHead(myLayout.x - CHILD_R - 4, myLayout.y, 'right')} fill={stroke} />
+        </g>
+      )
+    }
+
+    for (const child of node.children) {
+      lines.push(...drawLines(child, myLayout))
+    }
+    return lines
+  }
 
   return (
-    <div className="relative" style={{ minHeight: svgH }}>
-      {/* SVG connections */}
+    <div className="relative" style={{ width: totalW, height: totalH }}>
       <svg
         className="absolute inset-0 pointer-events-none"
-        width="100%"
-        height={svgH}
+        width={totalW}
+        height={totalH}
         style={{ overflow: 'visible' }}
       >
-        {children.map((child, i) => {
-          const cy = (i + 0.5) * CHILD_ROW_H + 8
-          const isActive = child.status === 'active'
-          const stroke = isActive ? '#22C55E' : '#403E3C'
-          const strokeW = isActive ? 1.5 : 1
-          const midX = ROOT_W + GAP_X / 2
-
-          return (
-            <g key={child.id}>
-              {/* Horizontal from root → mid */}
-              <line
-                x1={ROOT_W}
-                y1={rootY}
-                x2={midX}
-                y2={rootY}
-                stroke={stroke}
-                strokeWidth={strokeW}
-              />
-              {/* Vertical from mid → child row */}
-              <line
-                x1={midX}
-                y1={rootY}
-                x2={midX}
-                y2={cy}
-                stroke={stroke}
-                strokeWidth={strokeW}
-              />
-              {/* Horizontal from mid → child */}
-              <line
-                x1={midX}
-                y1={cy}
-                x2={childStartX - CHILD_R - 4}
-                y2={cy}
-                stroke={stroke}
-                strokeWidth={strokeW}
-              />
-              {/* Arrow head */}
-              <polygon
-                points={arrowHead(childStartX - CHILD_R - 4, cy, 'right')}
-                fill={stroke}
-              />
-            </g>
-          )
-        })}
+        {drawLines(tree)}
       </svg>
 
-      {/* Root node */}
-      <div className="absolute" style={{ top: rootY - ROOT_H / 2, left: 0 }}>
-        <OrgNode
-          agent={root}
-          isRoot
-          isSelected={selectedId === root.id}
-          onClick={() => onSelect(root)}
-        />
-      </div>
-
-      {/* Child nodes */}
-      {children.map((child, i) => {
-        const cy = (i + 0.5) * CHILD_ROW_H + 8
-        return (
-          <div
-            key={child.id}
-            className="absolute"
-            style={{ top: cy - CHILD_R, left: childStartX - CHILD_R }}
-          >
-            <OrgNode
-              agent={child}
-              isRoot={false}
-              isSelected={selectedId === child.id}
-              onClick={() => onSelect(child)}
-            />
-          </div>
-        )
-      })}
+      {layout.map(({ node, x, y, isRoot }) => (
+        <div
+          key={node.agent.id}
+          className="absolute"
+          style={{
+            left: x,
+            top: y - (isRoot ? ROOT_H / 2 : CHILD_R),
+          }}
+        >
+          <OrgNode
+            agent={node.agent}
+            isRoot={isRoot}
+            isSelected={selectedId === node.agent.id}
+            onClick={() => onSelect(node.agent)}
+          />
+        </div>
+      ))}
     </div>
   )
 }
@@ -227,76 +278,73 @@ function DesktopTree({
 /* ── Mobile vertical layout ────────────────────────────────────── */
 
 function MobileTree({
-  root,
-  children,
+  tree,
   selectedId,
   onSelect,
 }: {
-  root: AgentInfo
-  children: AgentInfo[]
+  tree: TreeNode
   selectedId: string | null
   onSelect: (a: AgentInfo) => void
 }) {
+  return <MobileTreeNode node={tree} selectedId={selectedId} onSelect={onSelect} depth={0} />
+}
+
+function MobileTreeNode({
+  node,
+  selectedId,
+  onSelect,
+  depth,
+}: {
+  node: TreeNode
+  selectedId: string | null
+  onSelect: (a: AgentInfo) => void
+  depth: number
+}) {
+  const isActive = node.agent.status === 'active'
+  const stroke = isActive ? '#22C55E' : '#403E3C'
+  const strokeW = isActive ? 1.5 : 1
+
   return (
-    <>
-      <OrgNode
-        agent={root}
-        isRoot
-        isSelected={selectedId === root.id}
-        onClick={() => onSelect(root)}
-      />
-      <div className="relative ml-6 flex flex-col gap-2">
-        {/* Vertical line */}
+    <div className={depth > 0 ? 'relative pl-6' : ''}>
+      {depth > 0 && (
         <svg
-          className="absolute left-0 top-0 pointer-events-none"
+          className="absolute left-0 top-1/2 pointer-events-none"
           width="24"
-          height="100%"
-          style={{ overflow: 'visible' }}
+          height="2"
+          style={{ overflow: 'visible', transform: 'translateY(-50%)' }}
         >
-          <line
-            x1={0}
-            y1={0}
-            x2={0}
-            y2="100%"
-            stroke="#403E3C"
-            strokeWidth={1}
-          />
+          <line x1={0} y1={1} x2={20} y2={1} stroke={stroke} strokeWidth={strokeW} />
+          <polygon points={arrowHead(20, 1, 'right')} fill={stroke} />
         </svg>
-        {children.map(child => {
-          const isActive = child.status === 'active'
-          return (
-            <div key={child.id} className="relative pl-6">
-              {/* Horizontal tick */}
-              <svg
-                className="absolute left-0 top-1/2 pointer-events-none"
-                width="24"
-                height="2"
-                style={{ overflow: 'visible', transform: 'translateY(-50%)' }}
-              >
-                <line
-                  x1={0}
-                  y1={1}
-                  x2={20}
-                  y2={1}
-                  stroke={isActive ? '#22C55E' : '#403E3C'}
-                  strokeWidth={isActive ? 1.5 : 1}
-                />
-                <polygon
-                  points={arrowHead(20, 1, 'right')}
-                  fill={isActive ? '#22C55E' : '#403E3C'}
-                />
-              </svg>
-              <OrgNode
-                agent={child}
-                isRoot={false}
-                isSelected={selectedId === child.id}
-                onClick={() => onSelect(child)}
-              />
-            </div>
-          )
-        })}
-      </div>
-    </>
+      )}
+      <OrgNode
+        agent={node.agent}
+        isRoot={depth === 0}
+        isSelected={selectedId === node.agent.id}
+        onClick={() => onSelect(node.agent)}
+      />
+      {node.children.length > 0 && (
+        <div className="relative ml-6 flex flex-col gap-2">
+          <svg
+            className="absolute left-0 top-0 pointer-events-none"
+            width="24"
+            height="100%"
+            style={{ overflow: 'visible' }}
+          >
+            <line x1={0} y1={0} x2={0} y2="100%" stroke="#403E3C" strokeWidth={1} />
+          </svg>
+          {node.children.map(child => (
+            <MobileTreeNode
+              key={child.agent.id}
+              node={child}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -202,6 +202,7 @@ export interface AgentInfo {
   workspace_path: string | null;
   topic_id: number | null;
   model: string | null;
+  skills: string[];
   heartbeat_raw: Record<string, unknown> | null;
   mailbox: { inbox: number; processing: number; done: number; deadletter: number };
 }

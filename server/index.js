@@ -15,6 +15,7 @@ import servicesRouter from './api/services.js'
 import cronRouter from './api/cron.js'
 import vitalsRouter from './api/vitals.js'
 import ideasRouter from './api/ideas.js'
+import pipelineRouter from './api/pipeline.js'
 import { getGlobalStatus } from './lib/status.js'
 import { startVitalsWorker } from './lib/vitals.js'
 
@@ -50,6 +51,7 @@ app.use('/api/config', configRouter)
 app.use('/api/memory', memoryRouter)
 app.use('/api/skills', skillsRouter)
 app.use('/api/ideas', ideasRouter)
+app.use('/api/pipeline', pipelineRouter)
 
 
 

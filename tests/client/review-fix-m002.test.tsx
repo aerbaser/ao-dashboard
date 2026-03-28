@@ -60,6 +60,37 @@ vi.mock('../../src/lib/api', async () => {
   }
 })
 
+
+vi.mock('../../src/components/agents/OrgChart', () => ({
+  default: function MockOrgChart({ onSelectAgent }: { onSelectAgent: (agent: unknown) => void }) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelectAgent({
+          id: 'agent-1',
+          name: 'Test Agent',
+          emoji: 'A',
+          role: 'Operator',
+          status: 'idle',
+          current_task_id: null,
+          current_step: null,
+          progress_note: null,
+          checkpoint_safe: null,
+          last_seen: null,
+          session_key: null,
+          workspace_path: null,
+          topic_id: null,
+          model: null,
+          heartbeat_raw: null,
+          mailbox: { inbox: 0, processing: 0, done: 0, deadletter: 0 },
+        })}
+      >
+        select agent
+      </button>
+    )
+  },
+}))
+
 vi.mock('@dnd-kit/core', () => ({
   DndContext: function MockDndContext({
     children,

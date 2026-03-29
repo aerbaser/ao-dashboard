@@ -45,7 +45,7 @@ export function CommentThread({ comments }: CommentThreadProps) {
   }
 
   return (
-    <div className="max-h-[300px] overflow-y-auto space-y-3">
+    <div className="max-h-[300px] overflow-y-auto space-y-3" data-testid="comment-thread">
       {comments.map((comment, i) => (
         <div key={i} className="flex gap-2 text-sm">
           <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-bg-overlay border border-border-subtle text-xs">
@@ -54,7 +54,7 @@ export function CommentThread({ comments }: CommentThreadProps) {
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-1.5 flex-wrap">
               <span className="font-semibold text-text-primary">{comment.actor}</span>
-              <span className="text-xs text-text-tertiary">{relativeTime(comment.timestamp)}</span>
+              <span className="text-xs text-text-tertiary max-sm:text-[10px]">{relativeTime(comment.timestamp)}</span>
             </div>
             <p className="text-text-secondary mt-0.5 break-words">{comment.body}</p>
           </div>

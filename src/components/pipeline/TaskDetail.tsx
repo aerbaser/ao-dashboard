@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type { Task, TaskEvent, TaskDecision, TaskContract } from '../../lib/types';
 import { PIPELINE_STATES } from '../../lib/types';
 import { fetchTaskEvents, fetchTaskDecisions, fetchTaskContract, transitionTask, addTaskEvent } from '../../lib/api';
@@ -19,6 +19,7 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
   const [loading, setLoading] = useState(true);
   const [transitionState, setTransitionState] = useState<import('../../lib/types').PipelineState | ''>('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const commentSectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -33,6 +34,13 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
       setLoading(false);
     });
   }, [task.id]);
+
+  // Scroll to comments section when opening AWAITING_OWNER task
+  useEffect(() => {
+    if (!loading && task.state === 'AWAITING_OWNER' && commentSectionRef.current) {
+      commentSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [loading, task.state]);
 
   // Close on Escape
   useEffect(() => {
@@ -157,7 +165,7 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
             </section>
 
             {/* Comments */}
-            <section>
+            <section ref={commentSectionRef}>
               <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
                 Comments
               </h3>

@@ -26,7 +26,8 @@ export default function OrgNode({ agent, isRoot, isSelected, onClick }: OrgNodeP
         className={`relative flex flex-col items-center justify-center gap-1 rounded-md border bg-bg-elevated transition-colors duration-100 focus:outline-none focus:ring-1 focus:ring-accent-amber/40 ${
           isSelected ? 'border-accent-amber' : 'border-border-subtle'
         } ${isActive ? 'ring-1 ring-accent-amber/50 animate-pulse-active' : ''}`}
-        style={{ width: 80, height: 100 }}
+        title={`${agent.name} — ${agent.role}`}
+        style={{ width: 96, height: 100 }}
       >
         <span className="text-2xl leading-none">{agent.emoji}</span>
         <span className="text-[13px] font-semibold text-text-primary leading-tight text-center px-1 truncate w-full">

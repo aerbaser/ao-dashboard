@@ -103,10 +103,11 @@ async function assembleStatus() {
     // cache not available — return null (UI shows '—')
   }
 
-  // AWAITING_OWNER scanning — count tasks in that state and check 4h threshold
+  // AWAITING_OWNER scanning — count from task-ledger + GitHub/AO tasks
   let awaitingOwnerCount = 0
   let awaitingOwnerOverdue = false
   try {
+    // 1. Task-ledger
     const tasksDir = join(homedir(), 'clawd/tasks')
     const entries = await readdir(tasksDir)
     const tskEntries = entries.filter(e => e.startsWith('tsk_'))
@@ -131,6 +132,21 @@ async function assembleStatus() {
         }
       }
     }
+    // 2. Also count from /api/tasks (includes GitHub issues)
+    try {
+      const resp = await fetch('http://127.0.0.1:3333/api/tasks')
+      const allTasks = await resp.json()
+      for (const t of allTasks) {
+        const s = t.status || {}
+        if (s.state === 'AWAITING_OWNER' && !t.task_id?.startsWith('tsk_')) {
+          awaitingOwnerCount++
+          if (s.updated_at) {
+            const ms = new Date(s.updated_at).getTime()
+            if (!isNaN(ms) && (now - ms) > FOUR_HOURS_MS) awaitingOwnerOverdue = true
+          }
+        }
+      }
+    } catch { /* self-fetch failed, skip */ }
   } catch {
     // tasks dir not available
   }

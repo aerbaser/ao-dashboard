@@ -9,6 +9,75 @@ const router = Router()
 
 const TASK_STORE = join(process.env.HOME, 'clawd/scripts/task-store.js')
 const TASKS_DIR = join(process.env.HOME, 'clawd/tasks')
+const GH_BIN = '/home/aiadmin/.local/bin/gh'
+const AO_URL = 'http://127.0.0.1:3100/api/sessions'
+
+const AO_STATUS_MAP = {
+  spawning: 'EXECUTION', ready: 'EXECUTION', working: 'EXECUTION',
+  pr_open: 'REVIEW_PENDING', ci_failed: 'CI_PENDING',
+  review_pending: 'REVIEW_PENDING', changes_requested: 'REVIEW_PENDING',
+  approved: 'QUALITY_GATE', mergeable: 'QUALITY_GATE',
+  merged: 'DONE', needs_input: 'AWAITING_OWNER',
+  stuck: 'STUCK', errored: 'FAILED', killed: 'FAILED', done: 'DONE',
+}
+
+function ghIssues(repo) {
+  return new Promise((resolve) => {
+    execFile(GH_BIN, ['issue', 'list', '--repo', repo, '--state', 'all',
+      '--label', 'agent:archimedes',
+      '--json', 'number,title,state,labels,createdAt,closedAt',
+      '--limit', '50'], { timeout: 15000 }, (err, stdout) => {
+      if (err) return resolve([])
+      try { resolve(JSON.parse(stdout)) } catch { resolve([]) }
+    })
+  })
+}
+
+async function aoSessions() {
+  try {
+    const r = await fetch(AO_URL)
+    const d = await r.json()
+    return d.sessions || d || []
+  } catch { return [] }
+}
+
+async function getGitHubTasks() {
+  const repos = ['aerbaser/ao-dashboard', 'aerbaser/sokrat-core']
+  const [issueArrays, sessions] = await Promise.all([
+    Promise.all(repos.map(ghIssues)), aoSessions()
+  ])
+  const sessionMap = new Map()
+  for (const s of sessions) {
+    const n = s.issueId || s.issueNumber
+    if (n) {
+      const k = `${s.projectId}#${n}`
+      if (!sessionMap.has(k) || new Date(s.createdAt) > new Date(sessionMap.get(k).createdAt))
+        sessionMap.set(k, s)
+    }
+  }
+  const tasks = []
+  for (let ri = 0; ri < repos.length; ri++) {
+    const pid = repos[ri].split('/')[1]
+    for (const issue of issueArrays[ri]) {
+      const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name)
+      const session = sessionMap.get(`${pid}#${issue.number}`)
+      let state = 'PLANNING'
+      if (issue.state === 'CLOSED' || issue.closedAt) state = 'DONE'
+      else if (session) state = AO_STATUS_MAP[session.status] || 'EXECUTION'
+      else if (labels.includes('agent:backlog')) state = 'PLANNING'
+      else state = 'SETUP'
+      tasks.push({
+        task_id: `gh-${pid}-${issue.number}`,
+        contract: { title: issue.title, route: 'build_route', outcome_type: 'app_release' },
+        status: { state, current_owner: session ? 'archimedes' : 'platon', current_route: 'build_route',
+          blockers: [], retries: 0, updated_at: issue.closedAt || issue.createdAt,
+          last_material_update: issue.closedAt || issue.createdAt },
+        actors: session ? ['platon', 'archimedes'] : ['platon'],
+      })
+    }
+  }
+  return tasks
+}
 const AUDIT_LOG = '/tmp/openclaw/ao-dashboard-actions.log'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -92,19 +161,26 @@ function isGuardViolation(stderr) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { readdirSync } = await import('fs')
-    const dirs = readdirSync(TASKS_DIR).filter(d => d.startsWith('tsk_'))
     const tasks = []
-    for (const id of dirs) {
-      try {
-        const { readFileSync } = await import('fs')
-        const contract = JSON.parse(readFileSync(join(TASKS_DIR, id, 'contract.json'), 'utf8'))
-        const status = JSON.parse(readFileSync(join(TASKS_DIR, id, 'status.json'), 'utf8'))
-        const events = await readNDJSON(join(TASKS_DIR, id, 'events.ndjson'))
-        const actors = extractActors(events)
-        tasks.push({ task_id: id, contract, status, actors })
-      } catch { /* skip unreadable tasks */ }
-    }
+    // 1. Task-ledger
+    try {
+      const { readdirSync, readFileSync } = await import('fs')
+      const dirs = readdirSync(TASKS_DIR).filter(d => d.startsWith('tsk_'))
+      for (const id of dirs) {
+        try {
+          const contract = JSON.parse(readFileSync(join(TASKS_DIR, id, 'contract.json'), 'utf8'))
+          const status = JSON.parse(readFileSync(join(TASKS_DIR, id, 'status.json'), 'utf8'))
+          const events = await readNDJSON(join(TASKS_DIR, id, 'events.ndjson'))
+          const actors = extractActors(events)
+          tasks.push({ task_id: id, contract, status, actors })
+        } catch { /* skip */ }
+      }
+    } catch { /* dir may not exist */ }
+    // 2. GitHub issues
+    try {
+      const ghTasks = await getGitHubTasks()
+      tasks.push(...ghTasks)
+    } catch (e) { console.error('[tasks] gh fetch:', e.message) }
     res.json(tasks)
   } catch (e) {
     res.status(500).json({ ok: false, error: 'INTERNAL', detail: e.message })

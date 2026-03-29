@@ -1,113 +1,151 @@
 import { Router } from 'express'
-import { readFile, readdir } from 'fs/promises'
-import { join } from 'path'
+import { execFile } from 'child_process'
 
 const router = Router()
-const HOME = process.env.HOME || '/home/aiadmin'
-const TODO_PATH = join(HOME, 'clawd/memory/tasks/TODO.md')
-const TASKS_ACTIVE_DIR = join(HOME, 'clawd/tasks/active')
 
-const SECTION_STATUS_MAP = {
-  blocked: 'blocked',
-  in_progress: 'in_progress',
-  'in progress': 'in_progress',
-  open_questions: 'open_questions',
-  'open questions': 'open_questions',
+// Map AO session status to pipeline state
+const AO_STATUS_MAP = {
+  spawning: 'in_progress',
+  ready: 'in_progress', 
+  working: 'in_progress',
+  pr_open: 'review',
+  ci_failed: 'ci_failed',
+  review_pending: 'review',
+  changes_requested: 'changes_requested',
+  approved: 'approved',
+  mergeable: 'approved',
+  merged: 'done',
+  needs_input: 'blocked',
+  stuck: 'blocked',
+  errored: 'failed',
+  killed: 'failed',
   done: 'done',
-  completed: 'done',
 }
 
-function sectionToStatus(title) {
-  const lower = title.toLowerCase().replace(/[^a-z\s_]/g, '').trim()
-  for (const [key, val] of Object.entries(SECTION_STATUS_MAP)) {
-    if (lower.includes(key)) return val
+function ghExec(args) {
+  return new Promise((resolve, reject) => {
+    execFile('/home/aiadmin/.local/bin/gh', args, { timeout: 15_000 }, (err, stdout, stderr) => {
+      if (err) reject(new Error(stderr || err.message))
+      else resolve(stdout)
+    })
+  })
+}
+
+function aoExec(args) {
+  const ao = process.env.HOME + '/.npm-global/bin/ao'
+  return new Promise((resolve, reject) => {
+    execFile(ao, args, { timeout: 10_000, env: { ...process.env, NO_COLOR: '1' } }, (err, stdout) => {
+      if (err) resolve('') // AO may not be running
+      else resolve(stdout)
+    })
+  })
+}
+
+async function fetchGitHubIssues(repo) {
+  try {
+    const raw = await ghExec([
+      'issue', 'list', '--repo', repo, '--state', 'all',
+      '--json', 'number,title,state,labels,assignees,createdAt,closedAt',
+      '--limit', '50'
+    ])
+    return JSON.parse(raw)
+  } catch {
+    return []
   }
-  return 'open'
 }
 
-function parseTodo(raw) {
-  const lines = raw.split('\n')
-  const items = []
-  let currentSection = 'open'
-  let counter = 1
-
-  for (const line of lines) {
-    // Section header: ## emoji Title
-    const sectionMatch = line.match(/^##\s+(.+)$/)
-    if (sectionMatch) {
-      currentSection = sectionToStatus(sectionMatch[1])
-      continue
-    }
-
-    // List item: - [x], - [ ], - [!]
-    const itemMatch = line.match(/^-\s+\[([x !])\]\s+(.+)$/)
-    if (!itemMatch) continue
-
-    const checkbox = itemMatch[1]
-    const rest = itemMatch[2]
-
-    // Extract title from **bold** text
-    const boldMatch = rest.match(/\*\*(.+?)\*\*/)
-    const title = boldMatch ? boldMatch[1] : rest.trim()
-    const description = rest.replace(/\*\*.+?\*\*/, '').trim() || null
-
-    const status = checkbox === 'x' ? 'completed' : checkbox === '!' ? 'blocked' : 'pending'
-    const id = `todo_${String(counter).padStart(3, '0')}`
-    counter++
-
-    items.push({ id, title, description, status, checkbox, section: currentSection, owner: 'unassigned' })
-  }
-
-  return items
-}
-
-function parseYaml(raw) {
-  const result = {}
-  for (const line of raw.split('\n')) {
-    const match = line.match(/^(\w+):\s*(.+)$/)
-    if (match) {
-      result[match[1]] = match[2].trim().replace(/^["']|["']$/g, '')
+async function fetchAOSessions() {
+  try {
+    const raw = await aoExec(['list', '--json'])
+    return JSON.parse(raw)
+  } catch {
+    // Fallback: try HTTP
+    try {
+      const resp = await fetch('http://127.0.0.1:3100/api/sessions')
+      const data = await resp.json()
+      return data.sessions || data || []
+    } catch {
+      return []
     }
   }
-  return result
 }
 
 // GET /api/pipeline
 router.get('/', async (_req, res) => {
   try {
-    const items = []
+    const repos = ['aerbaser/ao-dashboard', 'aerbaser/sokrat-core']
+    
+    // Fetch in parallel
+    const [issuesArrays, sessions] = await Promise.all([
+      Promise.all(repos.map(r => fetchGitHubIssues(r))),
+      fetchAOSessions(),
+    ])
 
-    // Read TODO.md
-    try {
-      const raw = await readFile(TODO_PATH, 'utf-8')
-      items.push(...parseTodo(raw))
-    } catch {
-      // file may not exist
-    }
-
-    // Read active task YAML files
-    try {
-      const files = await readdir(TASKS_ACTIVE_DIR)
-      for (const file of files) {
-        if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue
-        try {
-          const raw = await readFile(join(TASKS_ACTIVE_DIR, file), 'utf-8')
-          const parsed = parseYaml(raw)
-          items.push({
-            id: parsed.id ?? file.replace(/\.ya?ml$/, ''),
-            title: parsed.title ?? file,
-            status: parsed.status ?? 'pending',
-            owner: parsed.owner ?? null,
-            priority: parsed.priority ?? null,
-            source: 'task-store',
-          })
-        } catch {
-          // skip unparseable files
+    // Build session lookup: issueId → session
+    const sessionMap = new Map()
+    for (const s of sessions) {
+      const issueNum = s.issueId || s.issueNumber
+      if (issueNum) {
+        const key = `${s.projectId}#${issueNum}`
+        // Keep latest session per issue
+        if (!sessionMap.has(key) || new Date(s.createdAt) > new Date(sessionMap.get(key).createdAt)) {
+          sessionMap.set(key, s)
         }
       }
-    } catch {
-      // directory may not exist
     }
+
+    const items = []
+    for (let ri = 0; ri < repos.length; ri++) {
+      const repo = repos[ri]
+      const projectId = repo.split('/')[1]
+      const issues = issuesArrays[ri]
+
+      for (const issue of issues) {
+        const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name)
+        // Only include issues labeled agent:archimedes (AO-managed work)
+        if (!labels.includes('agent:archimedes')) continue
+
+        const sessionKey = `${projectId}#${issue.number}`
+        const session = sessionMap.get(sessionKey)
+        
+        let status = 'backlog'
+        let prNumber = null
+        let ciBadge = null
+
+        if (issue.state === 'CLOSED' || issue.closedAt) {
+          status = 'done'
+        } else if (session) {
+          status = AO_STATUS_MAP[session.status] || session.status
+          prNumber = session.pr?.number || session.prNumber || null
+          ciBadge = session.ci || null
+        } else if (labels.includes('agent:backlog')) {
+          status = 'backlog'
+        } else {
+          status = 'queued' // labeled but not spawned yet
+        }
+
+        const priority = labels.find(l => l.startsWith('priority:'))?.replace('priority:', '') || null
+
+        items.push({
+          id: `${projectId}#${issue.number}`,
+          number: issue.number,
+          title: issue.title,
+          repo: projectId,
+          status,
+          priority,
+          labels,
+          pr: prNumber,
+          ci: ciBadge,
+          session: session?.id || null,
+          createdAt: issue.createdAt,
+          closedAt: issue.closedAt,
+        })
+      }
+    }
+
+    // Sort: in_progress first, then review, then queued, then backlog, then done
+    const ORDER = { in_progress: 0, ci_failed: 1, review: 2, changes_requested: 3, approved: 4, blocked: 5, queued: 6, backlog: 7, done: 8, failed: 9 }
+    items.sort((a, b) => (ORDER[a.status] ?? 99) - (ORDER[b.status] ?? 99))
 
     res.json(items)
   } catch (err) {

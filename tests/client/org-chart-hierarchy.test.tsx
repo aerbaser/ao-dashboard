@@ -121,9 +121,9 @@ describe('OrgChart hierarchy', () => {
     render(<OrgChart onSelectAgent={vi.fn()} />)
     await act(async () => { await vi.advanceTimersByTimeAsync(0) })
 
-    // Root OrgNode renders as a button with inline style { width: 80, height: 100 }
+    // Root OrgNode renders as a button with inline style { width: 96, height: 100 }
     const rootButton = screen.getAllByRole('button').find(
-      b => b.style.width === '80px',
+      b => b.style.width === '96px',
     )
     expect(rootButton).toBeDefined()
     expect(rootButton!.textContent).toContain('Сократ')

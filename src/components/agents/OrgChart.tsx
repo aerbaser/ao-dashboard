@@ -66,7 +66,7 @@ function buildTree(agents: AgentInfo[]): TreeNode | null {
 }
 
 /** Layout constants */
-const ROOT_W = 80
+const ROOT_W = 96
 const ROOT_H = 100
 const CHILD_DIAMETER = 48
 const CHILD_R = CHILD_DIAMETER / 2
@@ -154,7 +154,7 @@ export default function OrgChart({ onSelectAgent }: OrgChartProps) {
   if (loading) {
     return (
       <div className="flex items-center gap-8 py-8">
-        <Skeleton className="w-20 h-[100px] rounded-md" />
+        <Skeleton className="w-24 h-[100px] rounded-md" />
         <div className="flex flex-col gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="w-12 h-12 rounded-full" />

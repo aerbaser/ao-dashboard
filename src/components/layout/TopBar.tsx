@@ -22,14 +22,17 @@ function Pill({
   children,
   onClick,
   className = '',
+  'data-testid': testId,
 }: {
   children: React.ReactNode
   onClick?: () => void
   className?: string
+  'data-testid'?: string
 }) {
   return (
     <button
       onClick={onClick}
+      data-testid={testId}
       className={`flex items-center gap-1.5 rounded-full px-3 py-1 bg-bg-elevated border border-border-subtle hover:bg-bg-hover transition-colors shrink-0 ${className}`}
     >
       {children}
@@ -92,9 +95,9 @@ export default function TopBar({ status, onMenuToggle }: TopBarProps) {
 
       {/* Awaiting owner pill */}
       {status?.awaiting_owner_count != null && status.awaiting_owner_count > 0 && (
-        <Pill onClick={() => navigate('/')} className="hidden sm:flex">
+        <Pill onClick={() => navigate('/')} className="hidden sm:flex" data-testid="awaiting-owner-pill">
           {status?.awaiting_owner_overdue && (
-            <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-red animate-pulse-critical" />
+            <span data-testid="awaiting-owner-pulse" className="inline-block w-2 h-2 rounded-full shrink-0 bg-red animate-pulse-critical" />
           )}
           <span className="text-xs text-amber">⏳ {status.awaiting_owner_count}</span>
         </Pill>

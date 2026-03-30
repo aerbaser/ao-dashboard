@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Task, PipelineState, StateGroup } from '../lib/types';
 import {
   ERROR_STATES,
@@ -7,7 +7,7 @@ import {
   VALID_ROUTES,
   VALID_OUTCOME_TYPES,
 } from '../lib/types';
-import { fetchTasks, createTask } from '../lib/api';
+import { fetchTasks, createTask, fetchCurrentAgent } from '../lib/api';
 import { usePolling } from '../hooks/usePolling';
 import { KanbanBoard } from '../components/pipeline/KanbanBoard';
 import { TaskDetail } from '../components/pipeline/TaskDetail';
@@ -26,13 +26,84 @@ function Freshness({ ts }: { ts: number }) {
   return <span className="ml-3 text-[11px] font-mono text-text-disabled">Updated {label}</span>
 }
 
-// ─── Filter Bar ───────────────────────────────────────────────────────────────
+// ─── Presets & localStorage ──────────────────────────────────────────────────
 
 interface Filters {
   owners: string[];
   route: string;
   stateGroup: StateGroup;
 }
+
+type PresetId = 'active' | 'mine' | 'blocked' | 'all';
+
+interface PresetDef {
+  id: PresetId;
+  label: string;
+  getFilters: (currentAgent: string | null) => Filters;
+}
+
+const PRESETS: PresetDef[] = [
+  { id: 'active',  label: 'Active',  getFilters: () => ({ stateGroup: 'active', owners: [], route: '' }) },
+  { id: 'mine',    label: 'Mine',    getFilters: (agent) => ({ stateGroup: 'active', owners: agent ? [agent] : [], route: '' }) },
+  { id: 'blocked', label: 'Blocked', getFilters: () => ({ stateGroup: 'error', owners: [], route: '' }) },
+  { id: 'all',     label: 'All',     getFilters: () => ({ stateGroup: 'all', owners: [], route: '' }) },
+];
+
+const STORAGE_KEY = 'pipeline-filter-state';
+
+interface StoredFilterState {
+  preset: PresetId | null;
+  filters: Filters;
+}
+
+function loadFilterState(): StoredFilterState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveFilterState(state: StoredFilterState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch { /* ignore */ }
+}
+
+// ─── Preset Bar ─────────────────────────────────────────────────────────────
+
+function PresetBar({
+  activePreset,
+  onPresetClick,
+}: {
+  activePreset: PresetId | null;
+  onPresetClick: (id: PresetId) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 px-3 pt-3 pb-1 bg-bg-surface">
+      {PRESETS.map((p) => (
+        <button
+          key={p.id}
+          onClick={() => onPresetClick(p.id)}
+          className={`px-3 py-1 rounded-sm text-sm font-medium transition-colors ${
+            activePreset === p.id
+              ? 'bg-amber text-text-inverse'
+              : 'bg-bg-void text-text-secondary border border-border-subtle hover:border-border-default hover:text-text-primary'
+          }`}
+        >
+          {p.label}
+        </button>
+      ))}
+      {activePreset === null && (
+        <span className="text-xs text-text-disabled font-mono ml-1">custom</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Filter Bar ───────────────────────────────────────────────────────────────
 
 function FilterBar({
   filters,
@@ -236,20 +307,43 @@ export default function Pipeline() {
   const { data: tasks, loading, refresh } = usePolling(fetchTasksFn, 5000);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [filters, setFilters] = useState<Filters>(() => {
-    const saved = localStorage.getItem('pipeline:stateGroup');
-    const stateGroup = (saved === 'all' || saved === 'active' || saved === 'terminal' || saved === 'error')
-      ? saved as StateGroup
-      : 'active';
-    return { owners: [], route: '', stateGroup };
-  });
+  const [currentAgent, setCurrentAgent] = useState<string | null>(null);
+
+  // Load initial filter state from localStorage
+  const savedState = useRef(loadFilterState());
+  const [filters, setFilters] = useState<Filters>(
+    savedState.current?.filters ?? { owners: [], route: '', stateGroup: 'active' }
+  );
+  const [activePreset, setActivePreset] = useState<PresetId | null>(
+    savedState.current?.preset ?? null
+  );
+
   const [hideEmpty, setHideEmpty] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
 
-  // Persist stateGroup selection to localStorage
+  // Fetch current agent identity on mount
   useEffect(() => {
-    localStorage.setItem('pipeline:stateGroup', filters.stateGroup);
-  }, [filters.stateGroup]);
+    fetchCurrentAgent()
+      .then((agent) => setCurrentAgent(agent.id))
+      .catch(() => { /* not critical */ });
+  }, []);
+
+  // Persist filter state to localStorage
+  useEffect(() => {
+    saveFilterState({ preset: activePreset, filters });
+  }, [activePreset, filters]);
+
+  const handlePresetClick = useCallback((id: PresetId) => {
+    const preset = PRESETS.find((p) => p.id === id)!;
+    const newFilters = preset.getFilters(currentAgent);
+    setActivePreset(id);
+    setFilters(newFilters);
+  }, [currentAgent]);
+
+  const handleFilterChange = useCallback((f: Filters) => {
+    setFilters(f);
+    setActivePreset(null); // manual change clears active preset
+  }, []);
 
   const allOwners = useMemo(() => {
     if (!tasks) return [];
@@ -297,10 +391,13 @@ export default function Pipeline() {
         <Freshness ts={lastUpdated} />
       </header>
 
+      {/* Preset bar */}
+      <PresetBar activePreset={activePreset} onPresetClick={handlePresetClick} />
+
       {/* Filter bar */}
       <FilterBar
         filters={filters}
-        onChange={setFilters}
+        onChange={handleFilterChange}
         allOwners={allOwners}
         hideEmpty={hideEmpty}
         onHideEmptyChange={setHideEmpty}

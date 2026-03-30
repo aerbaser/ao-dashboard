@@ -103,6 +103,13 @@ router.get('/', async (_req, res) => {
   }
 })
 
+// GET /api/agents/me — return the operator's agent identity
+router.get('/me', (_req, res) => {
+  const me = process.env.OPERATOR_AGENT || 'archimedes'
+  const meta = AGENT_META.find(a => a.id === me) || AGENT_META[1]
+  res.json({ id: meta.id, name: meta.name, emoji: meta.emoji, role: meta.role })
+})
+
 // GET /api/agents/:id/mailbox/:folder — list envelopes in folder
 router.get('/:id/mailbox/:folder', async (req, res) => {
   const { id, folder } = req.params

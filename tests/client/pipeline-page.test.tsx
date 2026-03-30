@@ -38,6 +38,7 @@ vi.mock('../../src/lib/api', () => ({
   fetchTasks: vi.fn(),
   createTask: vi.fn(),
   transitionTask: vi.fn(),
+  fetchCurrentAgent: vi.fn().mockResolvedValue({ id: 'archimedes', name: 'Archimedes', emoji: '🔧', role: 'Engineer' }),
 }))
 
 // Mock usePolling to return controlled data
@@ -133,7 +134,7 @@ describe('Pipeline page (full Kanban)', () => {
   })
 
   it('renders all columns when stateGroup is set to all via localStorage', () => {
-    localStorage.setItem('pipeline:stateGroup', 'all')
+    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
     render(<Pipeline />)
     expect(screen.getByText('EXECUTION')).toBeInTheDocument()
     expect(screen.getByText('DONE')).toBeInTheDocument()
@@ -141,7 +142,7 @@ describe('Pipeline page (full Kanban)', () => {
   })
 
   it('displays task cards in correct columns when stateGroup=all', () => {
-    localStorage.setItem('pipeline:stateGroup', 'all')
+    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
     render(<Pipeline />)
     expect(screen.getByText('Build feature X')).toBeInTheDocument()
     expect(screen.getByText('Deploy service Y')).toBeInTheDocument()
@@ -150,8 +151,9 @@ describe('Pipeline page (full Kanban)', () => {
 
   it('persists stateGroup selection to localStorage', () => {
     render(<Pipeline />)
-    // Default 'active' should be saved
-    expect(localStorage.getItem('pipeline:stateGroup')).toBe('active')
+    // Default 'active' should be saved in pipeline-filter-state
+    const stored = JSON.parse(localStorage.getItem('pipeline-filter-state')!)
+    expect(stored.filters.stateGroup).toBe('active')
   })
 
   it('shows freshness indicator', () => {
@@ -183,7 +185,7 @@ describe('Pipeline page (full Kanban)', () => {
   it('counter shows filtered/total when owner filter is active', async () => {
     const user = userEvent.setup()
     // Use stateGroup=all so owner filter is the only active filter
-    localStorage.setItem('pipeline:stateGroup', 'all')
+    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
     render(<Pipeline />)
     // All 3 tasks visible initially
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
@@ -271,7 +273,7 @@ describe('Pipeline page (full Kanban)', () => {
 
   it('multi-owner filter shows tasks from all selected owners', async () => {
     const user = userEvent.setup()
-    localStorage.setItem('pipeline:stateGroup', 'all')
+    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
     render(<Pipeline />)
 
     // Open multi-select dropdown

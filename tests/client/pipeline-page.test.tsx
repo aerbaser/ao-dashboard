@@ -164,17 +164,20 @@ describe('Pipeline page (full Kanban)', () => {
     expect(screen.getByRole('button', { name: /create task/i })).toBeInTheDocument()
   })
 
-  it('shows task count in header', () => {
+  it('shows task count in header (active default)', () => {
     render(<Pipeline />)
-    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+    // Default stateGroup='active' → only EXECUTION (1/3 tasks)
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
   })
 
   it('counter shows filtered/total when stateGroup filter is active', () => {
     render(<Pipeline />)
-    // Select "Active" stateGroup — only EXECUTION task matches (not DONE, not BLOCKED)
-    const stateSelect = screen.getByDisplayValue('All states')
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    // Default is 'active' — only EXECUTION (1/3 tasks)
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+    // Change to 'all' — all 3 tasks visible
+    const stateSelect = screen.getByDisplayValue('Active')
+    fireEvent.change(stateSelect, { target: { value: 'all' } })
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
   it('counter shows filtered/total when owner filter is active', () => {
@@ -186,21 +189,23 @@ describe('Pipeline page (full Kanban)', () => {
 
   it('counter shows total when all filters are reset', () => {
     render(<Pipeline />)
-    // Apply then remove a filter
-    const stateSelect = screen.getByDisplayValue('All states')
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    // Start with active filter (default) — 1/3 tasks
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+    // Reset to 'all' — 3 tasks (no filter active)
+    const stateSelect = screen.getByDisplayValue('Active')
     fireEvent.change(stateSelect, { target: { value: 'all' } })
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
   it('counter updates when stateGroup changes', () => {
     render(<Pipeline />)
-    const stateSelect = screen.getByDisplayValue('All states')
-
-    // Active: only EXECUTION (1 task)
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    // Start at 'active' (default) — 1/3 tasks
+    const stateSelect = screen.getByDisplayValue('Active')
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+
+    // All states: all 3 tasks
+    fireEvent.change(stateSelect, { target: { value: 'all' } })
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
 
     // Terminal: only DONE (1 task)
     fireEvent.change(stateSelect, { target: { value: 'terminal' } })
@@ -237,9 +242,8 @@ describe('Pipeline page (full Kanban)', () => {
       refresh: vi.fn(),
     })
 
+    // Default is 'active' already — all tasks are DONE → 0/3
     render(<Pipeline />)
-    const stateSelect = screen.getByDisplayValue('All states')
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
     expect(screen.getByText('0 / 3 tasks')).toBeInTheDocument()
   })
 

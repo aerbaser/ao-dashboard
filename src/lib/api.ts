@@ -218,6 +218,19 @@ export interface AgentEvent {
   actor?: string; timestamp?: string; [key: string]: unknown;
 }
 
+export interface AgentMe {
+  id: string;
+  name: string;
+  emoji: string;
+  role: string;
+}
+
+export async function fetchCurrentAgent(): Promise<AgentMe> {
+  const res = await fetch(`${BASE}/agents/me`);
+  if (!res.ok) throw new Error(`Failed to fetch current agent: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchAgents(): Promise<AgentInfo[]> {
   const res = await fetch(`${BASE}/agents`);
   if (!res.ok) throw new Error(`Failed to fetch agents: ${res.status}`);

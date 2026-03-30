@@ -38,6 +38,7 @@ vi.mock('../../src/lib/api', () => ({
   fetchTasks: vi.fn(),
   createTask: vi.fn(),
   transitionTask: vi.fn(),
+  fetchCurrentAgent: vi.fn().mockResolvedValue({ id: 'archimedes', name: 'Archimedes', emoji: '🔧', role: 'Engineer' }),
 }))
 
 // Mock usePolling to return controlled data

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/aiadmin/.worktrees/ao-dashboard/aodash-36/.claude/metadata-updater.sh",
+            "command": "/home/aiadmin/.worktrees/ao-dashboard/aodash-34/.claude/metadata-updater.sh",
             "timeout": 5000
           }
         ]

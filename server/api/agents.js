@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { readdir, readFile, writeFile, unlink, rename, mkdir } from 'fs/promises'
+import { readdir, readFile, writeFile, copyFile, unlink, rename, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { execFile } from 'child_process'
 import { existsSync } from 'fs'
@@ -356,6 +356,43 @@ router.put('/:id/skills', async (req, res) => {
 
     await writeFile(OPENCLAW_JSON, JSON.stringify(config, null, 2) + '\n', 'utf-8')
     res.json({ ok: true, skills: dedupedSkills })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// POST /api/agents/:id/model — change agent primary model in openclaw.json
+router.post("/:id/model", async (req, res) => {
+  const { id } = req.params
+  const { model } = req.body
+  if (!model || typeof model !== "string") {
+    return res.status(400).json({ ok: false, error: "model is required" })
+  }
+  const agent = AGENT_META.find((a) => a.id === id)
+  if (!agent) {
+    return res.status(404).json({ ok: false, error: `Unknown agent: ${id}` })
+  }
+  try {
+    const raw = await readFile(OPENCLAW_JSON, "utf-8")
+    const config = JSON.parse(raw)
+    const configId = id === "sokrat" ? "main" : id
+    const agentList = config?.agents?.list ?? []
+    const agentIdx = agentList.findIndex((a) => a.id === configId)
+    if (agentIdx === -1) {
+      return res.status(404).json({ ok: false, error: `Agent ${id} not found in openclaw.json` })
+    }
+    await copyFile(OPENCLAW_JSON, `${OPENCLAW_JSON}.bak`)
+    const agentEntry = config.agents.list[agentIdx]
+    if (!agentEntry.model || typeof agentEntry.model === "string") {
+      agentEntry.model = { primary: model }
+    } else {
+      agentEntry.model.primary = model
+    }
+    await writeFile(OPENCLAW_JSON, JSON.stringify(config, null, 2) + "\n", "utf-8")
+    execFile("openclaw", ["gateway", "restart"], { timeout: 60000 }, (err) => {
+      if (err) console.error("[agents] gateway restart failed:", err.message)
+    })
+    res.json({ ok: true, restarting: true })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }

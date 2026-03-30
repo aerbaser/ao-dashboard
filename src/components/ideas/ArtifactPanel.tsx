@@ -43,7 +43,7 @@ export default function ArtifactPanel({ artifact, ideaId, onApprove }: ArtifactP
     setApproving(true)
     try {
       const result = await approveIdea(ideaId)
-      onApprove(result.task_id)
+      onApprove(result.task_id ?? '')
     } finally {
       setApproving(false)
     }

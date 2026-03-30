@@ -19,6 +19,9 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
   const [loading, setLoading] = useState(true);
   const [transitionState, setTransitionState] = useState<import('../../lib/types').PipelineState | ''>('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showEventInput, setShowEventInput] = useState(false);
+  const [eventText, setEventText] = useState('');
+  const [eventSubmitting, setEventSubmitting] = useState(false);
   const commentSectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -68,16 +71,23 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
   }, [task.id, transitionState, onTransition]);
 
   const handleAddEvent = useCallback(async () => {
+    const body = eventText.trim();
+    if (!body || eventSubmitting) return;
     setActionError(null);
+    setEventSubmitting(true);
     try {
-      await addTaskEvent(task.id, 'NOTE', { actor: 'operator' });
+      await addTaskEvent(task.id, 'NOTE', { actor: 'operator', body });
       const evts = await fetchTaskEvents(task.id);
       setEvents(evts);
+      setEventText('');
+      setShowEventInput(false);
     } catch (e: unknown) {
       const err = e as { message?: string };
       setActionError(err.message || 'Failed to add event');
+    } finally {
+      setEventSubmitting(false);
     }
-  }, [task.id]);
+  }, [task.id, eventText, eventSubmitting]);
 
   const commentList: import('../../lib/types').CommentEvent[] = events
     .filter((e) => e.event_type === 'USER_COMMENT' || e['type'] === 'USER_COMMENT')
@@ -261,13 +271,32 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
                 </button>
               </div>
 
-              <div className="flex gap-2 mt-2">
+              <div className="mt-2">
                 <button
-                  onClick={handleAddEvent}
+                  onClick={() => setShowEventInput((v) => !v)}
                   className="px-3 py-1.5 rounded-sm border border-border-subtle text-text-secondary text-sm hover:bg-bg-elevated transition-colors"
                 >
-                  Add Event
+                  {showEventInput ? 'Cancel' : 'Add Event'}
                 </button>
+                {showEventInput && (
+                  <div className="flex gap-2 mt-2">
+                    <textarea
+                      className="flex-1 bg-bg-void border border-border-default rounded-sm p-2 text-sm text-text-primary placeholder:text-text-disabled resize-none focus:border-amber focus:outline-none disabled:opacity-50"
+                      rows={2}
+                      placeholder="Describe the event…"
+                      value={eventText}
+                      onChange={(e) => setEventText(e.target.value)}
+                      disabled={eventSubmitting}
+                    />
+                    <button
+                      onClick={handleAddEvent}
+                      disabled={!eventText.trim() || eventSubmitting}
+                      className="self-end px-3 py-1.5 rounded-sm bg-amber text-text-inverse font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all"
+                    >
+                      {eventSubmitting ? 'Adding…' : 'Add'}
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
           </div>

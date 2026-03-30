@@ -103,7 +103,10 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
 
           {/* Retries */}
           {task.retries > 0 && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-amber-subtle text-amber font-mono text-xs">
+            <span
+              title={`${task.retries} ${task.retries === 1 ? 'retry' : 'retries'}`}
+              className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-amber-subtle text-amber font-mono text-xs cursor-help"
+            >
               {task.retries}r
             </span>
           )}
@@ -111,13 +114,13 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
           {/* Artifact icons */}
           <div className="flex items-center gap-1 ml-auto">
             {task.hasQuality && (
-              <span className="text-xs text-emerald font-mono" title="Quality report">Q</span>
+              <span className="text-xs text-emerald font-mono cursor-help" title="Quality gate passed">Q</span>
             )}
             {task.hasOutcome && (
-              <span className="text-xs text-blue font-mono" title="Outcome manifest">O</span>
+              <span className="text-xs text-blue font-mono cursor-help" title="Owner confirmed">O</span>
             )}
             {task.hasRelease && (
-              <span className="text-xs text-amber font-mono" title="Release evidence">R</span>
+              <span className="text-xs text-amber font-mono cursor-help" title="Release evidence">R</span>
             )}
           </div>
         </div>

@@ -65,6 +65,10 @@ function deriveStatus(heartbeat) {
 // GET /api/agents — list all agents with heartbeat + mailbox counts
 router.get('/', async (_req, res) => {
   try {
+    const configIdFor = (id) => id === 'sokrat' ? 'main' : id
+    const openclawConfig = await safeReadJson(OPENCLAW_JSON)
+    const agentConfigList = openclawConfig?.agents?.list ?? []
+
     const agents = await Promise.all(
       AGENT_META.map(async (meta) => {
         const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${meta.id}.json`))
@@ -74,6 +78,7 @@ router.get('/', async (_req, res) => {
           done:       await countFiles(join(MAILBOXES_DIR, meta.id, 'done')),
           deadletter: await countFiles(join(MAILBOXES_DIR, meta.id, 'deadletter')),
         }
+        const agentConfig = agentConfigList.find(a => a.id === configIdFor(meta.id))
 
         return {
           id: meta.id,
@@ -87,6 +92,8 @@ router.get('/', async (_req, res) => {
           checkpoint_safe: heartbeat?.checkpoint_safe ?? null,
           last_seen: heartbeat?.updated_at ?? null,
           mailbox,
+          skills: agentConfig?.skills ?? [],
+          model: agentConfig?.model?.primary ?? null,
         }
       })
     )
@@ -251,6 +258,55 @@ router.post('/:id/mailbox/:folder/:envelopeId/move', async (req, res) => {
     }
     res.status(500).json({ ok: false, error: err.message })
   }
+})
+
+const ALLOWED_FILES = [
+  'AGENTS.md', 'SOUL.md', 'TOOLS.md', 'IDENTITY.md', 'USER.md',
+  'MEMORY.md', 'HEARTBEAT.md', 'BOOTSTRAP.md', 'INBOX.md',
+]
+
+// GET /api/agents/:id/files/:filename — read a workspace file
+router.get('/:id/files/:filename', async (req, res) => {
+  const { id, filename } = req.params
+  if (filename.includes('..')) {
+    return res.status(400).json({ error: 'Invalid filename' })
+  }
+  if (!ALLOWED_FILES.includes(filename)) {
+    return res.status(400).json({ error: `File not allowed: ${filename}` })
+  }
+  const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${id}.json`))
+  if (!heartbeat) {
+    return res.status(404).json({ error: `Agent '${id}' not found` })
+  }
+  const workspacePath = heartbeat.workspace_path ?? join(HOME, '.openclaw', `workspace-${id}`)
+  try {
+    const content = await readFile(join(workspacePath, filename), 'utf-8')
+    res.json({ content, filename })
+  } catch {
+    res.json({ content: '', filename })
+  }
+})
+
+// PUT /api/agents/:id/files/:filename — write a workspace file
+router.put('/:id/files/:filename', async (req, res) => {
+  const { id, filename } = req.params
+  if (filename.includes('..')) {
+    return res.status(400).json({ ok: false, error: 'Invalid filename' })
+  }
+  if (!ALLOWED_FILES.includes(filename)) {
+    return res.status(400).json({ ok: false, error: `File not allowed: ${filename}` })
+  }
+  const { content } = req.body
+  if (typeof content !== 'string') {
+    return res.status(400).json({ error: 'content must be a string' })
+  }
+  const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${id}.json`))
+  if (!heartbeat) {
+    return res.status(404).json({ error: `Agent '${id}' not found` })
+  }
+  const workspacePath = heartbeat.workspace_path ?? join(HOME, '.openclaw', `workspace-${id}`)
+  await writeFile(join(workspacePath, filename), content, 'utf-8')
+  res.json({ ok: true })
 })
 
 // GET /api/agents/:id/skills — get agent's active skills from openclaw.json

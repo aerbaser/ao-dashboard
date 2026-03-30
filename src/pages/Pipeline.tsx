@@ -226,13 +226,20 @@ export default function Pipeline() {
   const { data: tasks, loading, refresh } = usePolling(fetchTasksFn, 5000);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [filters, setFilters] = useState<Filters>({
-    owners: [],
-    route: '',
-    stateGroup: 'all',
+  const [filters, setFilters] = useState<Filters>(() => {
+    const saved = localStorage.getItem('pipeline:stateGroup');
+    const stateGroup = (saved === 'all' || saved === 'active' || saved === 'terminal' || saved === 'error')
+      ? saved as StateGroup
+      : 'active';
+    return { owners: [], route: '', stateGroup };
   });
   const [hideEmpty, setHideEmpty] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
+
+  // Persist stateGroup selection to localStorage
+  useEffect(() => {
+    localStorage.setItem('pipeline:stateGroup', filters.stateGroup);
+  }, [filters.stateGroup]);
 
   const allOwners = useMemo(() => {
     if (!tasks) return [];

@@ -106,10 +106,12 @@ const mockTasks: Task[] = [
 describe('Pipeline page (full Kanban)', () => {
   afterEach(() => {
     cleanup()
+    localStorage.clear()
   })
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     vi.mocked(usePolling).mockReturnValue({
       data: mockTasks,
       loading: false,
@@ -119,19 +121,36 @@ describe('Pipeline page (full Kanban)', () => {
     })
   })
 
-  it('renders KanbanBoard with pipeline columns', () => {
+  it('defaults stateGroup to active on mount', () => {
     render(<Pipeline />)
-    // Verify the page renders and shows state column headers
+    // EXECUTION is an active state — should be visible
+    expect(screen.getByText('EXECUTION')).toBeInTheDocument()
+    // Build feature X is in EXECUTION (active) — should be visible
+    expect(screen.getByText('Build feature X')).toBeInTheDocument()
+    // DONE tasks should NOT appear with active default
+    expect(screen.queryByText('Deploy service Y')).not.toBeInTheDocument()
+  })
+
+  it('renders all columns when stateGroup is set to all via localStorage', () => {
+    localStorage.setItem('pipeline:stateGroup', 'all')
+    render(<Pipeline />)
     expect(screen.getByText('EXECUTION')).toBeInTheDocument()
     expect(screen.getByText('DONE')).toBeInTheDocument()
     expect(screen.getByText('BLOCKED')).toBeInTheDocument()
   })
 
-  it('displays task cards in correct columns', () => {
+  it('displays task cards in correct columns when stateGroup=all', () => {
+    localStorage.setItem('pipeline:stateGroup', 'all')
     render(<Pipeline />)
     expect(screen.getByText('Build feature X')).toBeInTheDocument()
     expect(screen.getByText('Deploy service Y')).toBeInTheDocument()
     expect(screen.getByText('Design review blocked')).toBeInTheDocument()
+  })
+
+  it('persists stateGroup selection to localStorage', () => {
+    render(<Pipeline />)
+    // Default 'active' should be saved
+    expect(localStorage.getItem('pipeline:stateGroup')).toBe('active')
   })
 
   it('shows freshness indicator', () => {

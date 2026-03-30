@@ -119,6 +119,7 @@ export interface Task {
   contract?: TaskContract;
   events?: TaskEvent[];
   decisions?: TaskDecision[];
+  artifacts?: string[];
 }
 
 export interface TransitionError {

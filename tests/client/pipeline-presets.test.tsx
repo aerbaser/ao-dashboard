@@ -135,9 +135,9 @@ describe('Pipeline presets & localStorage', () => {
     // Verify preset is active
     expect(screen.getByRole('button', { name: 'Active' }).className).toContain('bg-amber')
 
-    // Change owner filter manually
-    const ownerSelect = screen.getByDisplayValue('All owners')
-    fireEvent.change(ownerSelect, { target: { value: 'archimedes' } })
+    // Change route filter manually (owner now uses MultiSelect, route still uses <select>)
+    const routeSelect = screen.getByDisplayValue('All routes')
+    fireEvent.change(routeSelect, { target: { value: 'build_route' } })
 
     // Preset should be cleared, "custom" label appears
     expect(screen.getByText('custom')).toBeInTheDocument()

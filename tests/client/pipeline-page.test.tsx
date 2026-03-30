@@ -1,4 +1,5 @@
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Task, PipelineState } from '../../src/lib/types'
 
@@ -163,43 +164,56 @@ describe('Pipeline page (full Kanban)', () => {
     expect(screen.getByRole('button', { name: /create task/i })).toBeInTheDocument()
   })
 
-  it('shows task count in header', () => {
+  it('shows task count in header (active default)', () => {
     render(<Pipeline />)
-    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+    // Default stateGroup='active' → only EXECUTION (1/3 tasks)
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
   })
 
   it('counter shows filtered/total when stateGroup filter is active', () => {
     render(<Pipeline />)
-    // Select "Active" stateGroup — only EXECUTION task matches (not DONE, not BLOCKED)
-    const stateSelect = screen.getByDisplayValue('All states')
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    // Default is 'active' — only EXECUTION (1/3 tasks)
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+    // Change to 'all' — all 3 tasks visible
+    const stateSelect = screen.getByDisplayValue('Active')
+    fireEvent.change(stateSelect, { target: { value: 'all' } })
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
-  it('counter shows filtered/total when owner filter is active', () => {
+  it('counter shows filtered/total when owner filter is active', async () => {
+    const user = userEvent.setup()
+    // Use stateGroup=all so owner filter is the only active filter
+    localStorage.setItem('pipeline:stateGroup', 'all')
     render(<Pipeline />)
-    const ownerSelect = screen.getByDisplayValue('All owners')
-    fireEvent.change(ownerSelect, { target: { value: 'archimedes' } })
+    // All 3 tasks visible initially
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+    // Open multi-select and select 'archimedes' (first option)
+    await user.click(screen.getByTestId('multi-select-trigger'))
+    const boxes = Array.from(screen.getByTestId('multi-select').querySelectorAll('input[type="checkbox"]'))
+    await user.click(boxes[0]) // archimedes
+    // Only 1 archimedes task → "1 / 3 tasks"
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
   })
 
   it('counter shows total when all filters are reset', () => {
     render(<Pipeline />)
-    // Apply then remove a filter
-    const stateSelect = screen.getByDisplayValue('All states')
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    // Start with active filter (default) — 1/3 tasks
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+    // Reset to 'all' — 3 tasks (no filter active)
+    const stateSelect = screen.getByDisplayValue('Active')
     fireEvent.change(stateSelect, { target: { value: 'all' } })
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
   it('counter updates when stateGroup changes', () => {
     render(<Pipeline />)
-    const stateSelect = screen.getByDisplayValue('All states')
-
-    // Active: only EXECUTION (1 task)
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    // Start at 'active' (default) — 1/3 tasks
+    const stateSelect = screen.getByDisplayValue('Active')
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+
+    // All states: all 3 tasks
+    fireEvent.change(stateSelect, { target: { value: 'all' } })
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
 
     // Terminal: only DONE (1 task)
     fireEvent.change(stateSelect, { target: { value: 'terminal' } })
@@ -236,9 +250,56 @@ describe('Pipeline page (full Kanban)', () => {
       refresh: vi.fn(),
     })
 
+    // Default is 'active' already — all tasks are DONE → 0/3
     render(<Pipeline />)
-    const stateSelect = screen.getByDisplayValue('All states')
-    fireEvent.change(stateSelect, { target: { value: 'active' } })
     expect(screen.getByText('0 / 3 tasks')).toBeInTheDocument()
+  })
+
+  it('shows owner multi-select in filter bar', () => {
+    render(<Pipeline />)
+    expect(screen.getByTestId('multi-select')).toBeInTheDocument()
+    expect(screen.getByTestId('multi-select-trigger')).toHaveTextContent('All owners')
+  })
+
+  it('shows hide empty checkbox in filter bar (not header)', () => {
+    render(<Pipeline />)
+    const hideEmptyCheckbox = screen.getByRole('checkbox', { name: /hide empty/i })
+    expect(hideEmptyCheckbox).toBeInTheDocument()
+    // Should be unchecked by default
+    expect(hideEmptyCheckbox).not.toBeChecked()
+  })
+
+  it('multi-owner filter shows tasks from all selected owners', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('pipeline:stateGroup', 'all')
+    render(<Pipeline />)
+
+    // Open multi-select dropdown
+    await user.click(screen.getByTestId('multi-select-trigger'))
+
+    // Select archimedes — checkboxes inside multi-select container
+    const getDropdownBoxes = () =>
+      Array.from(screen.getByTestId('multi-select').querySelectorAll('input[type="checkbox"]'))
+
+    const boxes = getDropdownBoxes()
+    // Owners sorted: archimedes, platon, sokrat
+    expect(boxes).toHaveLength(3)
+
+    // Select archimedes (dropdown stays open — click is inside ref)
+    await user.click(boxes[0])
+
+    // After selecting archimedes, only archimedes' task should be visible
+    expect(screen.getByText('Build feature X')).toBeInTheDocument()
+    expect(screen.queryByText('Deploy service Y')).not.toBeInTheDocument()
+
+    // Dropdown still open, select sokrat too
+    const boxes2 = getDropdownBoxes()
+    await user.click(boxes2[2]) // sokrat
+
+    // Now both archimedes and sokrat tasks should be visible
+    expect(screen.getByText('Build feature X')).toBeInTheDocument()
+    expect(screen.getByText('Deploy service Y')).toBeInTheDocument()
+    // platon's task should still be hidden
+    expect(screen.queryByText('Design review blocked')).not.toBeInTheDocument()
   })
 })

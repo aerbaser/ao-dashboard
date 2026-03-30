@@ -12,6 +12,7 @@ import { usePolling } from '../hooks/usePolling';
 import { KanbanBoard } from '../components/pipeline/KanbanBoard';
 import { TaskDetail } from '../components/pipeline/TaskDetail';
 import { MultiSelect } from '../components/ui/MultiSelect';
+import { QuickSearch } from '../components/pipeline/QuickSearch';
 
 // ─── Freshness Indicator ──────────────────────────────────────────────────────
 
@@ -319,6 +320,7 @@ export default function Pipeline() {
   );
 
   const [hideEmpty, setHideEmpty] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
 
   // Fetch current agent identity on mount
@@ -359,6 +361,23 @@ export default function Pipeline() {
   useEffect(() => {
     if (tasks) setLastUpdated(Date.now());
   }, [tasks]);
+
+  // Cmd+K / Ctrl+K to open quick search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearch(true)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  const handleSearchSelect = useCallback((task: Task) => {
+    setShowSearch(false)
+    setSelectedTask(task)
+  }, [])
 
   const handleCardClick = useCallback((task: Task) => {
     setSelectedTask(task);
@@ -422,6 +441,14 @@ export default function Pipeline() {
           onTransition={handleTransition}
         />
       )}
+
+      {/* Quick search overlay */}
+      <QuickSearch
+        tasks={tasks || []}
+        open={showSearch}
+        onSelect={handleSearchSelect}
+        onClose={() => setShowSearch(false)}
+      />
 
       {/* Create task modal */}
       {showCreate && (

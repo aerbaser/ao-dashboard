@@ -64,9 +64,9 @@ describe('TaskCard Q/O/R hover tooltips', () => {
     expect(el.className).toContain('cursor-help')
   })
 
-  it('shows "Owner confirmed" tooltip on O icon', () => {
+  it('shows "Outcome manifest" tooltip on O icon', () => {
     render(<TaskCard task={makeTask({ hasOutcome: true })} onClick={vi.fn()} />)
-    const el = screen.getByTitle('Owner confirmed')
+    const el = screen.getByTitle('Outcome manifest')
     expect(el).toBeTruthy()
     expect(el.textContent).toBe('O')
     expect(el.className).toContain('cursor-help')
@@ -81,6 +81,6 @@ describe('TaskCard Q/O/R hover tooltips', () => {
     )
     expect(screen.getByTitle('2 retries')).toBeTruthy()
     expect(screen.getByTitle('Quality gate passed')).toBeTruthy()
-    expect(screen.getByTitle('Owner confirmed')).toBeTruthy()
+    expect(screen.getByTitle('Outcome manifest')).toBeTruthy()
   })
 })

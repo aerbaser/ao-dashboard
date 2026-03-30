@@ -42,6 +42,34 @@ export const ACTIVE_STATES: PipelineState[] = MAIN_FLOW_STATES.filter(
   (s) => s !== 'DONE'
 );
 
+/** Valid state transitions — each state maps to the states it can transition to. */
+export const STATE_TRANSITIONS: Record<PipelineState, readonly PipelineState[]> = {
+  INTAKE:          ['CONTEXT', 'BLOCKED'],
+  CONTEXT:         ['RESEARCH', 'BLOCKED'],
+  RESEARCH:        ['DESIGN', 'BLOCKED'],
+  DESIGN:          ['PLANNING', 'BLOCKED'],
+  PLANNING:        ['SETUP', 'BLOCKED'],
+  SETUP:           ['EXECUTION', 'BLOCKED'],
+  EXECUTION:       ['REVIEW_PENDING', 'AWAITING_OWNER', 'BLOCKED'],
+  AWAITING_OWNER:  ['EXECUTION', 'BLOCKED'],
+  REVIEW_PENDING:  ['CI_PENDING', 'EXECUTION'],
+  CI_PENDING:      ['QUALITY_GATE', 'FAILED'],
+  QUALITY_GATE:    ['FINALIZING', 'EXECUTION'],
+  FINALIZING:      ['DEPLOYING', 'DONE'],
+  DEPLOYING:       ['OBSERVING', 'FAILED'],
+  OBSERVING:       ['DONE', 'FAILED'],
+  DONE:            [],
+  BLOCKED:         ['EXECUTION'],
+  FAILED:          ['EXECUTION'],
+  STUCK:           ['EXECUTION'],
+  WAITING_USER:    ['EXECUTION'],
+};
+
+/** Get valid next states for a given state, returns empty array for unknown states. */
+export function getValidTransitions(state: PipelineState): readonly PipelineState[] {
+  return STATE_TRANSITIONS[state] ?? [];
+}
+
 export const VALID_ROUTES = [
   'artifact_route', 'build_route', 'diagnostic_route', 'publish_route',
   'ops_route', 'incident_route', 'hybrid_route',

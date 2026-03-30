@@ -18,33 +18,11 @@ import { useDroppable } from '@dnd-kit/core';
 import type { Task, PipelineState, TransitionError } from '../../lib/types';
 import { MAIN_FLOW_STATES, SIDE_STATES } from '../../lib/types';
 import { transitionTask } from '../../lib/api';
+import { STATE_COLORS } from '../../lib/pipeline-colors';
 import { TaskCard } from './TaskCard';
 import Skeleton from '../ui/Skeleton';
 import EmptyState from '../ui/EmptyState';
 import { useToast } from '../../hooks/useToast';
-
-// Pipeline state color map for column headers
-const STATE_COLORS: Record<PipelineState, string> = {
-  INTAKE: '#60A5FA',
-  CONTEXT: '#818CF8',
-  RESEARCH: '#A78BFA',
-  DESIGN: '#F472B6',
-  PLANNING: '#FB923C',
-  SETUP: '#FBBF24',
-  EXECUTION: '#F5A623',
-  AWAITING_OWNER: '#F59E0B',
-  REVIEW_PENDING: '#34D399',
-  CI_PENDING: '#22C55E',
-  QUALITY_GATE: '#10B981',
-  FINALIZING: '#6EE7B7',
-  DEPLOYING: '#A7F3D0',
-  OBSERVING: '#D1FAE5',
-  DONE: '#4ADE80',
-  BLOCKED: '#EF4444',
-  FAILED: '#DC2626',
-  WAITING_USER: '#FBBF24',
-  STUCK: '#F97316',
-};
 
 interface KanbanColumnProps {
   state: PipelineState;

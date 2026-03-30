@@ -245,7 +245,8 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
                 <select
                   value={transitionState}
                   onChange={(e) => setTransitionState(e.target.value as import('../../lib/types').PipelineState | '')}
-                  className="flex-1 bg-bg-void border border-border-default rounded-sm px-2 py-1.5 text-sm font-mono text-text-primary focus:border-amber focus:outline-none"
+                  disabled={!getValidTransitions(task.state).length}
+                  className="flex-1 bg-bg-void border border-border-default rounded-sm px-2 py-1.5 text-sm font-mono text-text-primary focus:border-amber focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <option value="">Transition to...</option>
                   {getValidTransitions(task.state).map((s) => (

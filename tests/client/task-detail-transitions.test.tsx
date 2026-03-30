@@ -1,5 +1,5 @@
 import { render, screen, cleanup } from '@testing-library/react'
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { Task, PipelineState } from '../../src/lib/types'
 import { STATE_TRANSITIONS } from '../../src/lib/types'
 

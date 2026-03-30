@@ -52,7 +52,7 @@ vi.mock('readline', () => ({
   createInterface: vi.fn(() => ({
     on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       if (event === 'close') handler()
-      return { on: vi.fn((e2: string, h2: (...args: unknown[]) => void) => {
+      return { on: vi.fn((e2: string, _h2: (...args: unknown[]) => void) => {
         if (e2 === 'error') { /* noop */ }
         return { on: vi.fn() }
       })}

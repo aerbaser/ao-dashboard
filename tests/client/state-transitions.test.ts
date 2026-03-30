@@ -14,7 +14,7 @@ describe('STATE_TRANSITIONS graph', () => {
   })
 
   it('all transition targets are valid pipeline states', () => {
-    for (const [from, targets] of Object.entries(STATE_TRANSITIONS)) {
+    for (const [_from, targets] of Object.entries(STATE_TRANSITIONS)) {
       for (const to of targets) {
         expect(PIPELINE_STATES).toContain(to)
       }

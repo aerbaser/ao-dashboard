@@ -12,6 +12,7 @@ import type {
   CronResponse,
   VitalsResponse,
   RateLimitsResponse,
+  Idea,
 } from './types';
 
 const BASE = '/api';
@@ -68,6 +69,7 @@ interface TaskListResponse {
     last_material_update?: string;
     [key: string]: unknown;
   };
+  actors?: string[];
 }
 
 interface TaskDetailResponse extends TaskListResponse {
@@ -103,6 +105,7 @@ function toTask(item: TaskListResponse): Task {
     hasRelease: false,
     state_entered_at: s.updated_at || s.last_material_update || undefined,
     contract: c,
+    actors: item.actors || [],
   };
 }
 
@@ -199,6 +202,8 @@ export interface AgentInfo {
   session_key: string | null;
   workspace_path: string | null;
   topic_id: number | null;
+  model: string | null;
+  skills: string[];
   heartbeat_raw: Record<string, unknown> | null;
   mailbox: { inbox: number; processing: number; done: number; deadletter: number };
 }
@@ -249,6 +254,18 @@ export async function wakeAgent(agentId: string): Promise<{ ok: boolean; error?:
   const res = await fetch(`${BASE}/agents/${agentId}/wake`, { method: 'POST' });
   return res.json();
 }
+export async function fetchAgentFile(agentId: string, filename: string): Promise<{ content: string; filename: string; path: string }> {
+  const res = await fetch(`${BASE}/agents/${agentId}/files/${encodeURIComponent(filename)}`);
+  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
+  return res.json();
+}
+export async function saveAgentFile(agentId: string, filename: string, content: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/agents/${agentId}/files/${encodeURIComponent(filename)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  return res.json();
+}
 export async function deleteEnvelope(agentId: string, folder: string, envelopeId: string): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch(`${BASE}/agents/${agentId}/mailbox/${folder}/${envelopeId}`, { method: 'DELETE' });
   return res.json();
@@ -260,9 +277,24 @@ export async function moveEnvelope(agentId: string, fromFolder: string, toFolder
   });
   return res.json();
 }
+export async function changeAgentModel(
+  agentId: string,
+  model: string
+): Promise<{ ok: boolean; restarting?: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/agents/${agentId}/model`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  })
+  return res.json()
+}
+
+// ─── Skills ──────────────────────────────────────────────────────────────────
+
 export async function fetchAgentSkills(agentId: string): Promise<{ skills: string[] }> {
   return fetchJson<{ skills: string[] }>(`/agents/${agentId}/skills`);
 }
+
 export async function updateAgentSkills(agentId: string, skills: string[]): Promise<{ ok: boolean; skills: string[]; error?: string }> {
   return request<{ ok: boolean; skills: string[]; error?: string }>(`/agents/${agentId}/skills`, {
     method: 'PUT',
@@ -272,11 +304,11 @@ export async function updateAgentSkills(agentId: string, skills: string[]): Prom
 
 export interface SkillInfo {
   name: string;
-  path: string;
-  size: number;
-  content: string;
+  description: string;
 }
+
 export type SkillsData = Record<string, SkillInfo[]>;
+
 export async function fetchAllSkills(): Promise<SkillsData> {
   return fetchJson<SkillsData>('/skills');
 }
@@ -364,4 +396,78 @@ export function switchRateLimitProfile(profile: string): Promise<{ ok: boolean; 
     method: 'POST',
     body: JSON.stringify({ profile }),
   })
+}
+
+// ─── Ideas ──────────────────────────────────────────────────────────────────
+
+export function fetchIdeas(status?: string): Promise<Idea[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+  return fetchJson<Idea[]>(`/ideas${qs}`)
+}
+
+export function fetchIdea(id: string): Promise<Idea> {
+  return fetchJson<Idea>(`/ideas/${id}`)
+}
+
+export function createIdea(data: {
+  title: string
+  body?: string
+  target_agent?: string
+  target_project?: string
+  tags?: string[]
+}): Promise<Idea> {
+  return request<Idea>('/ideas', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateIdea(id: string, data: Partial<Idea>): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export function approveIdea(id: string, taskId?: string): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ task_id: taskId }),
+  })
+}
+
+export function brainstormIdea(id: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/ideas/${id}/brainstorm`, {
+    method: 'POST',
+  })
+}
+
+export function archiveIdea(id: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/ideas/${id}/archive`, {
+    method: 'POST',
+  })
+}
+
+export function deleteIdea(id: string): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
+// ─── Pipeline ────────────────────────────────────────────────────────────────
+
+export interface PipelineItem {
+  id: string
+  title: string
+  description: string | null
+  status: string      // blocked, completed, pending, or from task-store
+  checkbox: string    // "x", " ", "!"
+  section: string     // blocked, in_progress, open_questions, done
+  source?: string     // "task-store" for yaml items
+  owner?: string | null
+  priority?: string | null
+}
+
+export async function fetchPipelineItems(): Promise<PipelineItem[]> {
+  return fetchJson<PipelineItem[]>('/pipeline')
 }

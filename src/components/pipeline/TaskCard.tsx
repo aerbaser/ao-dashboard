@@ -128,6 +128,13 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
             💬 Awaiting your input
           </div>
         )}
+
+        {/* Last agent message preview — AWAITING_OWNER only */}
+        {task.state === 'AWAITING_OWNER' && task.lastAgentMessage && (
+          <p className="text-xs text-text-secondary line-clamp-2 mt-1 border-l-2 border-amber pl-2">
+            {task.lastAgentMessage}
+          </p>
+        )}
       </div>
 
       {/* Inline error card for guard violations */}

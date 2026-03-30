@@ -113,6 +113,21 @@ function readNDJSON(filePath) {
   })
 }
 
+/** Extract last agent (non-owner) comment text from events, truncated to 120 chars. */
+function extractLastAgentMessage(events) {
+  let last = null
+  for (const ev of events) {
+    const type = ev.event_type || ev.type
+    if (type === 'USER_COMMENT' && ev.actor && ev.actor !== 'owner') {
+      last = ev
+    }
+  }
+  if (!last) return null
+  const payload = last.payload || {}
+  const body = last.body || payload.body || ''
+  return body ? body.slice(0, 120) : null
+}
+
 /** Extract unique actors in chronological (first-seen) order from events array. */
 function extractActors(events) {
   const seen = new Set()
@@ -172,7 +187,8 @@ router.get('/', async (_req, res) => {
           const status = JSON.parse(readFileSync(join(TASKS_DIR, id, 'status.json'), 'utf8'))
           const events = await readNDJSON(join(TASKS_DIR, id, 'events.ndjson'))
           const actors = extractActors(events)
-          tasks.push({ task_id: id, contract, status, actors })
+          const lastAgentMessage = extractLastAgentMessage(events)
+          tasks.push({ task_id: id, contract, status, actors, lastAgentMessage })
         } catch { /* skip */ }
       }
     } catch { /* dir may not exist */ }

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { GlobalStatus } from '../../lib/types'
 
 interface TopBarProps {
@@ -64,6 +64,8 @@ function TempDisplay({ temp }: { temp: number | null }) {
 
 export default function TopBar({ status, onMenuToggle }: TopBarProps) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const isSystemPage = pathname === '/system'
 
   return (
     <header className="h-[var(--topbar-height)] bg-bg-surface border-b border-border-subtle flex items-center px-3 gap-2 shrink-0 overflow-hidden">
@@ -125,23 +127,28 @@ export default function TopBar({ status, onMenuToggle }: TopBarProps) {
 
       <div className="flex-1" />
 
-      {/* CPU pill */}
-      <Pill onClick={() => navigate('/system')} className="hidden md:flex">
-        <span className="text-xs text-text-secondary">CPU</span>
-        <span className="text-xs font-mono text-text-primary">
-          {status?.cpu_percent != null ? `${status.cpu_percent}%` : '—'}
-        </span>
-        <TempDisplay temp={status?.cpu_temp ?? null} />
-      </Pill>
+      {/* CPU pill — system page only */}
+      {isSystemPage && (
+        <Pill onClick={() => navigate('/system')} className="hidden md:flex" data-testid="cpu-pill">
+          <span className="text-xs text-text-secondary">CPU</span>
+          <span className="text-xs font-mono text-text-primary">
+            {status?.cpu_percent != null ? `${status.cpu_percent}%` : '—'}
+          </span>
+          <TempDisplay temp={status?.cpu_temp ?? null} />
+        </Pill>
+      )}
 
-      {/* Usage bars */}
-      <button
-        onClick={() => navigate('/config')}
-        className="hidden lg:flex items-center gap-3 hover:bg-bg-hover rounded-full px-3 py-1 transition-colors shrink-0"
-      >
-        <UsageBar label="Claude" percent={status?.claude_usage_percent ?? null} />
-        <UsageBar label="Codex" percent={status?.codex_usage_percent ?? null} />
-      </button>
+      {/* Usage bars — system page only */}
+      {isSystemPage && (
+        <button
+          onClick={() => navigate('/config')}
+          data-testid="usage-bars"
+          className="hidden lg:flex items-center gap-3 hover:bg-bg-hover rounded-full px-3 py-1 transition-colors shrink-0"
+        >
+          <UsageBar label="Claude" percent={status?.claude_usage_percent ?? null} />
+          <UsageBar label="Codex" percent={status?.codex_usage_percent ?? null} />
+        </button>
+      )}
     </header>
   )
 }

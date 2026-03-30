@@ -180,10 +180,18 @@ describe('Pipeline page (full Kanban)', () => {
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
-  it('counter shows filtered/total when owner filter is active', () => {
+  it('counter shows filtered/total when owner filter is active', async () => {
+    const user = userEvent.setup()
+    // Use stateGroup=all so owner filter is the only active filter
+    localStorage.setItem('pipeline:stateGroup', 'all')
     render(<Pipeline />)
-    const ownerSelect = screen.getByDisplayValue('All owners')
-    fireEvent.change(ownerSelect, { target: { value: 'archimedes' } })
+    // All 3 tasks visible initially
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+    // Open multi-select and select 'archimedes' (first option)
+    await user.click(screen.getByTestId('multi-select-trigger'))
+    const boxes = Array.from(screen.getByTestId('multi-select').querySelectorAll('input[type="checkbox"]'))
+    await user.click(boxes[0]) // archimedes
+    // Only 1 archimedes task → "1 / 3 tasks"
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
   })
 
@@ -263,6 +271,7 @@ describe('Pipeline page (full Kanban)', () => {
 
   it('multi-owner filter shows tasks from all selected owners', async () => {
     const user = userEvent.setup()
+    localStorage.setItem('pipeline:stateGroup', 'all')
     render(<Pipeline />)
 
     // Open multi-select dropdown

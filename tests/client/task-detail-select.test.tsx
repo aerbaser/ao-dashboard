@@ -9,7 +9,7 @@ describe("STATE_TRANSITIONS", () => {
   })
 
   it("each value is an array of valid PipelineState", () => {
-    for (const [_from, tos] of Object.entries(STATE_TRANSITIONS)) {
+    for (const tos of Object.values(STATE_TRANSITIONS)) {
       for (const to of tos as string[]) {
         expect(PIPELINE_STATES).toContain(to)
       }

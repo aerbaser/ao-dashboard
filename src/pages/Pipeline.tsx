@@ -11,6 +11,7 @@ import { fetchTasks, createTask } from '../lib/api';
 import { usePolling } from '../hooks/usePolling';
 import { KanbanBoard } from '../components/pipeline/KanbanBoard';
 import { TaskDetail } from '../components/pipeline/TaskDetail';
+import { MultiSelect } from '../components/ui/MultiSelect';
 
 // ─── Freshness Indicator ──────────────────────────────────────────────────────
 
@@ -37,28 +38,26 @@ function FilterBar({
   filters,
   onChange,
   allOwners,
+  hideEmpty,
+  onHideEmptyChange,
   onCreateClick,
 }: {
   filters: Filters;
   onChange: (f: Filters) => void;
   allOwners: string[];
+  hideEmpty: boolean;
+  onHideEmptyChange: (v: boolean) => void;
   onCreateClick: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 p-3 bg-bg-surface border-b border-border-subtle flex-wrap">
-      {/* Owner multi-select (simplified as select) */}
-      <select
-        value={filters.owners[0] || ''}
-        onChange={(e) =>
-          onChange({ ...filters, owners: e.target.value ? [e.target.value] : [] })
-        }
-        className="bg-bg-void border border-border-default rounded-sm px-2 py-1.5 text-sm font-mono text-text-primary focus:border-amber focus:outline-none"
-      >
-        <option value="">All owners</option>
-        {allOwners.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
+      {/* Owner multi-select */}
+      <MultiSelect
+        options={allOwners}
+        value={filters.owners}
+        onChange={(owners) => onChange({ ...filters, owners })}
+        placeholder="All owners"
+      />
 
       {/* Route filter */}
       <select
@@ -85,6 +84,17 @@ function FilterBar({
         <option value="terminal">Terminal</option>
         <option value="error">Error</option>
       </select>
+
+      {/* Hide empty toggle */}
+      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={hideEmpty}
+          onChange={(e) => onHideEmptyChange(e.target.checked)}
+          className="accent-amber w-3 h-3"
+        />
+        <span className="text-xs text-text-tertiary">Hide empty</span>
+      </label>
 
       <div className="ml-auto">
         <button
@@ -285,15 +295,6 @@ export default function Pipeline() {
           </span>
         )}
         <Freshness ts={lastUpdated} />
-        <label className="ml-auto flex items-center gap-1.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={hideEmpty}
-            onChange={(e) => setHideEmpty(e.target.checked)}
-            className="accent-amber w-3 h-3"
-          />
-          <span className="text-xs text-text-tertiary">Hide empty</span>
-        </label>
       </header>
 
       {/* Filter bar */}
@@ -301,6 +302,8 @@ export default function Pipeline() {
         filters={filters}
         onChange={setFilters}
         allOwners={allOwners}
+        hideEmpty={hideEmpty}
+        onHideEmptyChange={setHideEmpty}
         onCreateClick={() => setShowCreate(true)}
       />
 

@@ -1,4 +1,5 @@
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Task, PipelineState } from '../../src/lib/types'
 
@@ -240,5 +241,52 @@ describe('Pipeline page (full Kanban)', () => {
     const stateSelect = screen.getByDisplayValue('All states')
     fireEvent.change(stateSelect, { target: { value: 'active' } })
     expect(screen.getByText('0 / 3 tasks')).toBeInTheDocument()
+  })
+
+  it('shows owner multi-select in filter bar', () => {
+    render(<Pipeline />)
+    expect(screen.getByTestId('multi-select')).toBeInTheDocument()
+    expect(screen.getByTestId('multi-select-trigger')).toHaveTextContent('All owners')
+  })
+
+  it('shows hide empty checkbox in filter bar (not header)', () => {
+    render(<Pipeline />)
+    const hideEmptyCheckbox = screen.getByRole('checkbox', { name: /hide empty/i })
+    expect(hideEmptyCheckbox).toBeInTheDocument()
+    // Should be unchecked by default
+    expect(hideEmptyCheckbox).not.toBeChecked()
+  })
+
+  it('multi-owner filter shows tasks from all selected owners', async () => {
+    const user = userEvent.setup()
+    render(<Pipeline />)
+
+    // Open multi-select dropdown
+    await user.click(screen.getByTestId('multi-select-trigger'))
+
+    // Select archimedes — checkboxes inside multi-select container
+    const getDropdownBoxes = () =>
+      Array.from(screen.getByTestId('multi-select').querySelectorAll('input[type="checkbox"]'))
+
+    const boxes = getDropdownBoxes()
+    // Owners sorted: archimedes, platon, sokrat
+    expect(boxes).toHaveLength(3)
+
+    // Select archimedes (dropdown stays open — click is inside ref)
+    await user.click(boxes[0])
+
+    // After selecting archimedes, only archimedes' task should be visible
+    expect(screen.getByText('Build feature X')).toBeInTheDocument()
+    expect(screen.queryByText('Deploy service Y')).not.toBeInTheDocument()
+
+    // Dropdown still open, select sokrat too
+    const boxes2 = getDropdownBoxes()
+    await user.click(boxes2[2]) // sokrat
+
+    // Now both archimedes and sokrat tasks should be visible
+    expect(screen.getByText('Build feature X')).toBeInTheDocument()
+    expect(screen.getByText('Deploy service Y')).toBeInTheDocument()
+    // platon's task should still be hidden
+    expect(screen.queryByText('Design review blocked')).not.toBeInTheDocument()
   })
 })

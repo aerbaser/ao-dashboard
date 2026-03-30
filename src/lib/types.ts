@@ -144,6 +144,7 @@ export interface Task {
   hasRelease: boolean;
   state_entered_at?: string;
   actors?: string[];
+  lastAgentMessage?: string | null;
   contract?: TaskContract;
   events?: TaskEvent[];
   decisions?: TaskDecision[];

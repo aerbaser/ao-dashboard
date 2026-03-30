@@ -272,7 +272,9 @@ export default function Pipeline() {
         )}
         {tasks && (
           <span className="ml-3 text-text-tertiary font-mono text-xs">
-            {tasks.length} tasks
+            {filteredTasks.length !== tasks.length
+              ? `${filteredTasks.length} / ${tasks.length} tasks`
+              : `${tasks.length} tasks`}
           </span>
         )}
         <Freshness ts={lastUpdated} />

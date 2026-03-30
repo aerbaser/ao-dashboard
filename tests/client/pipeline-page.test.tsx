@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Task, PipelineState } from '../../src/lib/types'
 
@@ -146,6 +146,80 @@ describe('Pipeline page (full Kanban)', () => {
 
   it('shows task count in header', () => {
     render(<Pipeline />)
-    expect(screen.getByText(/3 tasks/)).toBeInTheDocument()
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+  })
+
+  it('counter shows filtered/total when stateGroup filter is active', () => {
+    render(<Pipeline />)
+    // Select "Active" stateGroup — only EXECUTION task matches (not DONE, not BLOCKED)
+    const stateSelect = screen.getByDisplayValue('All states')
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+  })
+
+  it('counter shows filtered/total when owner filter is active', () => {
+    render(<Pipeline />)
+    const ownerSelect = screen.getByDisplayValue('All owners')
+    fireEvent.change(ownerSelect, { target: { value: 'archimedes' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+  })
+
+  it('counter shows total when all filters are reset', () => {
+    render(<Pipeline />)
+    // Apply then remove a filter
+    const stateSelect = screen.getByDisplayValue('All states')
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+    fireEvent.change(stateSelect, { target: { value: 'all' } })
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+  })
+
+  it('counter updates when stateGroup changes', () => {
+    render(<Pipeline />)
+    const stateSelect = screen.getByDisplayValue('All states')
+
+    // Active: only EXECUTION (1 task)
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+
+    // Terminal: only DONE (1 task)
+    fireEvent.change(stateSelect, { target: { value: 'terminal' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+
+    // Error: only BLOCKED (1 task)
+    fireEvent.change(stateSelect, { target: { value: 'error' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+  })
+
+  it('counter shows 0/total when stateGroup=active and all tasks are DONE', () => {
+    const allDoneTasks: Task[] = Array.from({ length: 3 }, (_, i) => ({
+      id: `tsk_done_${i}`,
+      state: 'DONE' as PipelineState,
+      owner: 'archimedes',
+      route: 'build_route',
+      title: `Done task ${i}`,
+      age: 10,
+      ttl: null,
+      blockers: 0,
+      retries: 0,
+      terminal: true,
+      hasQuality: false,
+      hasOutcome: false,
+      hasRelease: false,
+      actors: [],
+    }))
+
+    vi.mocked(usePolling).mockReturnValue({
+      data: allDoneTasks,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      refresh: vi.fn(),
+    })
+
+    render(<Pipeline />)
+    const stateSelect = screen.getByDisplayValue('All states')
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    expect(screen.getByText('0 / 3 tasks')).toBeInTheDocument()
   })
 })

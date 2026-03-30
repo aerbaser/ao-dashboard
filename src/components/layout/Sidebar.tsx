@@ -33,7 +33,10 @@ const navItems: NavItem[] = [
     to: '/ideas',
     label: 'Ideas',
     icon: '💡',
-    badge: () => null,
+    badge: (s) => {
+      if (!s) return null
+      return s.ideas_actionable > 0 ? s.ideas_actionable : null
+    },
     badgeColor: 'amber',
   },
   {

@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { createIdea } from '../../lib/api'
+import { useState, useRef, useEffect } from 'react'
 
 interface IdeaFormProps {
-  onCreated: () => void
+  onSubmit: (data: { title: string; body: string; tags: string[]; target_agent: string }) => void
+  onCancel: () => void
+  submitting?: boolean
 }
 
 const AGENTS = [
@@ -12,87 +13,94 @@ const AGENTS = [
   { value: 'sokrat', label: 'Sokrat' },
 ]
 
-export default function IdeaForm({ onCreated }: IdeaFormProps) {
+export default function IdeaForm({ onSubmit, onCancel, submitting }: IdeaFormProps) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [tagsInput, setTagsInput] = useState('')
   const [targetAgent, setTargetAgent] = useState('brainstorm-claude')
-  const [submitting, setSubmitting] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const titleRef = useRef<HTMLInputElement>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    titleRef.current?.focus()
+  }, [])
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-
-    setSubmitting(true)
-    try {
-      await createIdea({
-        title: title.trim(),
-        body: body.trim(),
-        target_agent: targetAgent,
-      })
-      setTitle('')
-      setBody('')
-      setExpanded(false)
-      onCreated()
-    } catch (err) {
-      console.error('Failed to create idea:', err)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (!expanded) {
-    return (
-      <button
-        onClick={() => setExpanded(true)}
-        className="w-full text-left px-3 py-2.5 rounded-md border border-dashed border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong transition-colors text-sm"
-      >
-        + New idea...
-      </button>
-    )
+    const tags = tagsInput
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    onSubmit({ title: title.trim(), body: body.trim(), tags, target_agent: targetAgent })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-md border border-border-subtle bg-bg-surface p-3 space-y-2">
-      <input
-        type="text"
-        value={title}
-        onChange={e => setTitle(e.target.value)}
-        placeholder="Idea title..."
-        autoFocus
-        className="w-full bg-bg-base border border-border-subtle rounded-sm px-2 py-1.5 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-blue"
-      />
-      <textarea
-        value={body}
-        onChange={e => setBody(e.target.value)}
-        placeholder="Description (optional)"
-        rows={2}
-        className="w-full bg-bg-base border border-border-subtle rounded-sm px-2 py-1.5 text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-blue resize-none"
-      />
-      <div className="flex items-center justify-between gap-2">
-        <select
-          value={targetAgent}
-          onChange={e => setTargetAgent(e.target.value)}
-          className="bg-bg-base border border-border-subtle rounded-sm px-2 py-1 text-xs text-text-secondary focus:outline-none"
-        >
-          {AGENTS.map(a => (
-            <option key={a.value} value={a.value}>{a.label}</option>
-          ))}
-        </select>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => { setExpanded(false); setTitle(''); setBody('') }}
-            className="text-xs text-text-tertiary hover:text-text-secondary px-2 py-1"
-          >
-            Cancel
-          </button>
+    <form
+      onSubmit={handleSubmit}
+      className="bg-bg-surface border border-border-subtle rounded-md p-4 animate-fade-in"
+    >
+      <div className="space-y-3">
+        <div>
+          <input
+            ref={titleRef}
+            type="text"
+            placeholder="Idea title..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full bg-bg-elevated border border-border-default rounded-sm px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-amber"
+          />
+        </div>
+
+        <div>
+          <textarea
+            placeholder="Description (markdown)..."
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={3}
+            className="w-full bg-bg-elevated border border-border-default rounded-sm px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-amber resize-y"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <select
+              value={targetAgent}
+              onChange={(e) => setTargetAgent(e.target.value)}
+              className="w-full bg-bg-elevated border border-border-default rounded-sm px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber"
+            >
+              {AGENTS.map((a) => (
+                <option key={a.value} value={a.value}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Tags (comma-separated)"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              className="w-full bg-bg-elevated border border-border-default rounded-sm px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-amber"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-1">
           <button
             type="submit"
             disabled={!title.trim() || submitting}
-            className="text-xs font-medium px-3 py-1 rounded-sm bg-amber text-text-inverse hover:bg-amber/90 transition-colors disabled:opacity-50"
+            className="px-4 py-1.5 text-sm font-medium rounded-sm bg-amber text-text-inverse hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {submitting ? 'Creating...' : 'Create'}
+            {submitting ? 'Creating...' : 'Create Idea'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-1.5 text-sm rounded-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+          >
+            Cancel
           </button>
         </div>
       </div>

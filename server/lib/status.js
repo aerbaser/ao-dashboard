@@ -10,6 +10,7 @@ import { getVitals } from './vitals.js'
 
 const execFileAsync = promisify(execFile)
 
+const IDEAS_DIR = join(process.env.HOME ?? '', 'clawd/ideas')
 const RUNTIME_DIR = join(process.env.HOME ?? '', 'clawd/runtime')
 const HEARTBEATS_DIR = join(RUNTIME_DIR, 'heartbeats')
 const RATE_LIMIT_CACHE = join(RUNTIME_DIR, 'rate-limit-cache.json')
@@ -146,16 +147,37 @@ async function getUsagePercents() {
   }
 }
 
+// ── Ideas actionable count ───────────────────────────────────────────────
+
+async function getIdeasActionableCount() {
+  try {
+    const files = await readdir(IDEAS_DIR)
+    const jsonFiles = files.filter(f => f.endsWith('.json'))
+    let count = 0
+    for (const f of jsonFiles) {
+      try {
+        const raw = await readFile(join(IDEAS_DIR, f), 'utf8')
+        const idea = JSON.parse(raw)
+        if (idea.status === 'draft' || idea.status === 'artifact_ready') count++
+      } catch { /* skip malformed */ }
+    }
+    return count
+  } catch {
+    return 0
+  }
+}
+
 // ── Main aggregator ──────────────────────────────────────────────────────
 
 export async function getGlobalStatus() {
   // Run all independent reads in parallel
-  const [heartbeats, taskCounts, services, usage, vitals] = await Promise.all([
+  const [heartbeats, taskCounts, services, usage, vitals, ideasActionable] = await Promise.all([
     getHeartbeats(),
     getTaskCounts(),
     fetchServices(),
     getUsagePercents(),
     Promise.resolve(getVitals()),
+    getIdeasActionableCount(),
   ])
 
   const gatewayEntry = services.find(s => s.name === 'openclaw-gateway')
@@ -169,5 +191,6 @@ export async function getGlobalStatus() {
     failed_services: failedServices,
     ...vitals,
     ...usage,
+    ideas_actionable: ideasActionable,
   }
 }

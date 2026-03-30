@@ -12,6 +12,7 @@ import type {
   CronResponse,
   VitalsResponse,
   RateLimitsResponse,
+  Idea,
 } from './types';
 
 const BASE = '/api';
@@ -399,12 +400,9 @@ export function switchRateLimitProfile(profile: string): Promise<{ ok: boolean; 
 
 // ─── Ideas ──────────────────────────────────────────────────────────────────
 
-// Re-export Idea from types.ts for backwards compatibility
-export type { Idea } from './types'
-import type { Idea } from './types'
-
-export function fetchIdeas(): Promise<Idea[]> {
-  return fetchJson<Idea[]>('/ideas')
+export function fetchIdeas(status?: string): Promise<Idea[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+  return fetchJson<Idea[]>(`/ideas${qs}`)
 }
 
 export function fetchIdea(id: string): Promise<Idea> {
@@ -413,7 +411,7 @@ export function fetchIdea(id: string): Promise<Idea> {
 
 export function createIdea(data: {
   title: string
-  body: string
+  body?: string
   target_agent?: string
   target_project?: string
   tags?: string[]
@@ -424,19 +422,17 @@ export function createIdea(data: {
   })
 }
 
-export function updateIdea(
-  id: string,
-  data: Partial<Pick<Idea, 'title' | 'body' | 'tags' | 'status' | 'artifact_md'>>
-): Promise<Idea> {
-  return request<Idea>(`/ideas/${id}`, {
-    method: 'PATCH',
+export function updateIdea(id: string, data: Partial<Idea>): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
+    method: 'PUT',
     body: JSON.stringify(data),
   })
 }
 
-export function approveIdea(id: string): Promise<{ ok: true; task_id: string }> {
-  return request<{ ok: true; task_id: string }>(`/ideas/${id}/approve`, {
+export function approveIdea(id: string, taskId?: string): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}/approve`, {
     method: 'POST',
+    body: JSON.stringify({ task_id: taskId }),
   })
 }
 
@@ -449,6 +445,12 @@ export function brainstormIdea(id: string): Promise<{ ok: true }> {
 export function archiveIdea(id: string): Promise<{ ok: true }> {
   return request<{ ok: true }>(`/ideas/${id}/archive`, {
     method: 'POST',
+  })
+}
+
+export function deleteIdea(id: string): Promise<Idea> {
+  return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
   })
 }
 

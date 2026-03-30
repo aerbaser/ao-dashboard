@@ -1,7 +1,7 @@
 // Tasks API — wraps task-store.js CLI (no re-implemented business logic)
 import { Router } from 'express'
 import { execFile } from 'child_process'
-import { createReadStream, mkdirSync, appendFileSync, existsSync } from 'fs'
+import { createReadStream, readFileSync, mkdirSync, appendFileSync, existsSync } from 'fs'
 import { createInterface } from 'readline'
 import { join } from 'path'
 
@@ -263,6 +263,39 @@ router.post('/', async (req, res) => {
   }
 })
 
+// ─── State machine — valid transitions ───────────────────────────────────────
+
+const STATE_TRANSITIONS = {
+  INTAKE:          ['CONTEXT', 'BLOCKED'],
+  CONTEXT:         ['RESEARCH', 'BLOCKED'],
+  RESEARCH:        ['DESIGN', 'BLOCKED'],
+  DESIGN:          ['PLANNING', 'BLOCKED'],
+  PLANNING:        ['SETUP', 'BLOCKED'],
+  SETUP:           ['EXECUTION', 'BLOCKED'],
+  EXECUTION:       ['REVIEW_PENDING', 'AWAITING_OWNER', 'BLOCKED'],
+  AWAITING_OWNER:  ['EXECUTION', 'BLOCKED'],
+  REVIEW_PENDING:  ['CI_PENDING', 'EXECUTION'],
+  CI_PENDING:      ['QUALITY_GATE', 'FAILED'],
+  QUALITY_GATE:    ['FINALIZING', 'EXECUTION'],
+  FINALIZING:      ['DEPLOYING', 'DONE'],
+  DEPLOYING:       ['OBSERVING', 'FAILED'],
+  OBSERVING:       ['DONE', 'FAILED'],
+  DONE:            [],
+  BLOCKED:         ['EXECUTION'],
+  FAILED:          ['EXECUTION'],
+  STUCK:           ['EXECUTION'],
+  WAITING_USER:    ['EXECUTION'],
+}
+
+/** Read current state from task status.json */
+function readTaskState(taskId) {
+  const statusPath = join(TASKS_DIR, taskId, 'status.json')
+  if (!existsSync(statusPath)) return null
+  try {
+    return JSON.parse(readFileSync(statusPath, 'utf8')).state || null
+  } catch { return null }
+}
+
 // ─── POST /api/tasks/:id/transition ──────────────────────────────────────────
 
 const TRANSITION_ALLOWED = ['state', 'actor', 'reason', 'recovery', 'next_action', 'force',
@@ -274,6 +307,22 @@ router.post('/:id/transition', async (req, res) => {
   if (validation) return res.status(400).json(validation)
 
   const { state, actor, reason, recovery, next_action, force, blockers, deadline_at, expires_at } = req.body
+
+  // Validate transition against state machine (unless force)
+  if (!force) {
+    const currentState = readTaskState(id)
+    if (currentState) {
+      const allowed = STATE_TRANSITIONS[currentState] || []
+      if (!allowed.includes(state)) {
+        return res.status(422).json({
+          ok: false,
+          error: 'INVALID_TRANSITION',
+          detail: `Transition from ${currentState} to ${state} is not allowed. Valid transitions: ${allowed.join(', ') || 'none'}`,
+        })
+      }
+    }
+  }
+
   const args = ['transition', id, state]
   if (actor) args.push('--actor', actor)
   if (reason) args.push('--reason', reason)

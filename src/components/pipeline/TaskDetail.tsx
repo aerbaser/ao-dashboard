@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import type { Task, TaskEvent, TaskDecision, TaskContract } from '../../lib/types';
-import { PIPELINE_STATES } from '../../lib/types';
+import { getValidTransitions } from '../../lib/types';
 import { fetchTaskEvents, fetchTaskDecisions, fetchTaskContract, transitionTask, addTaskEvent } from '../../lib/api';
 import { EventTimeline } from './EventTimeline';
 import { CommentThread } from './CommentThread';
@@ -245,10 +245,11 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
                 <select
                   value={transitionState}
                   onChange={(e) => setTransitionState(e.target.value as import('../../lib/types').PipelineState | '')}
-                  className="flex-1 bg-bg-void border border-border-default rounded-sm px-2 py-1.5 text-sm font-mono text-text-primary focus:border-amber focus:outline-none"
+                  disabled={!getValidTransitions(task.state).length}
+                  className="flex-1 bg-bg-void border border-border-default rounded-sm px-2 py-1.5 text-sm font-mono text-text-primary focus:border-amber focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <option value="">Transition to...</option>
-                  {PIPELINE_STATES.filter((s) => s !== task.state).map((s) => (
+                  {getValidTransitions(task.state).map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>

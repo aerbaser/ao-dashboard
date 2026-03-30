@@ -79,9 +79,6 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
     }
   }, [task.id]);
 
-  // Subdirectories for artifacts
-  const artifactDirs = ['issue-contracts', 'outputs', 'execution-bundles', 'review-findings'];
-
   const commentList: import('../../lib/types').CommentEvent[] = events
     .filter((e) => e.event_type === 'USER_COMMENT' || e['type'] === 'USER_COMMENT')
     .map((e) => {
@@ -212,22 +209,24 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
               </section>
             )}
 
-            {/* Sub-artifacts */}
-            <section>
-              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                Artifacts
-              </h3>
-              <div className="space-y-1">
-                {artifactDirs.map((dir) => (
-                  <div
-                    key={dir}
-                    className="px-2 py-1.5 rounded-sm bg-bg-surface text-sm font-mono text-text-secondary"
-                  >
-                    {dir}/
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* Artifacts — only shown when real files exist */}
+            {task.artifacts && task.artifacts.length > 0 && (
+              <section data-testid="artifacts-section">
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                  Artifacts
+                </h3>
+                <div className="space-y-1">
+                  {task.artifacts.map((artifact) => (
+                    <div
+                      key={artifact}
+                      className="px-2 py-1.5 rounded-sm bg-bg-surface text-sm font-mono text-text-secondary"
+                    >
+                      {artifact}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Action buttons */}
             <section>

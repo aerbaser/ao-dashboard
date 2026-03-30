@@ -117,7 +117,7 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
               <span className="text-xs text-emerald font-mono cursor-help" title="Quality gate passed">Q</span>
             )}
             {task.hasOutcome && (
-              <span className="text-xs text-blue font-mono cursor-help" title="Owner confirmed">O</span>
+              <span className="text-xs text-blue font-mono cursor-help" title="Outcome manifest">O</span>
             )}
             {task.hasRelease && (
               <span className="text-xs text-amber font-mono cursor-help" title="Release evidence">R</span>

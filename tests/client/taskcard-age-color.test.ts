@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ageColor } from '../../src/components/pipeline/TaskCard';
+import { ageColor } from '../../src/lib/age-color-css';
 
 describe('ageColor', () => {
   it('returns text-text-tertiary when age is null', () => {

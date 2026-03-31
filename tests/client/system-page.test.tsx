@@ -1,12 +1,14 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import ServicesGrid from '../../src/components/system/ServicesGrid'
 import ServerVitals from '../../src/components/system/ServerVitals'
 import UsageTracker from '../../src/components/system/UsageTracker'
+import ThroughputWidget from '../../src/components/system/ThroughputWidget'
 import { getUsageTone } from '../../src/components/system/usageTone'
-import type { ServiceInfo, VitalsResponse, UsageProfile } from '../../src/lib/types'
+import type { ServiceInfo, VitalsResponse, UsageProfile, ThroughputStats } from '../../src/lib/types'
 
 describe('System components', () => {
+  afterEach(() => cleanup())
   it('renders service groups and disables forbidden actions', () => {
     const services: ServiceInfo[] = [
       {
@@ -64,6 +66,47 @@ describe('System components', () => {
     expect(getUsageTone(0.61)).toBe('amber')
     expect(getUsageTone(0.9)).toBe('red')
     expect(getUsageTone(0.25)).toBe('green')
+  })
+
+  it('renders throughput widget with three metric cards', () => {
+    const stats: ThroughputStats = {
+      completed_24h: 3,
+      completed_7d: 18,
+      avg_cycle_time_minutes: 142,
+      median_cycle_time_minutes: 98,
+      backlog_trend: 'shrinking',
+      computed_at: '2026-03-31T10:00:00Z',
+    }
+
+    render(<ThroughputWidget data={stats} loading={false} />)
+
+    expect(screen.getByText('Pipeline Throughput')).toBeInTheDocument()
+    expect(screen.getByTestId('throughput-24h')).toHaveTextContent('3')
+    expect(screen.getByTestId('throughput-cycle')).toHaveTextContent('2h 22m')
+    expect(screen.getByTestId('throughput-7d')).toHaveTextContent('18')
+    expect(screen.getByText('Shrinking')).toBeInTheDocument()
+  })
+
+  it('renders throughput widget loading state', () => {
+    render(<ThroughputWidget data={null} loading={true} />)
+    expect(screen.getByText('Loading throughput…')).toBeInTheDocument()
+  })
+
+  it('renders throughput widget with zero values', () => {
+    const stats: ThroughputStats = {
+      completed_24h: 0,
+      completed_7d: 0,
+      avg_cycle_time_minutes: 0,
+      median_cycle_time_minutes: 0,
+      backlog_trend: 'stable',
+      computed_at: '2026-03-31T10:00:00Z',
+    }
+
+    render(<ThroughputWidget data={stats} loading={false} />)
+
+    expect(screen.getByTestId('throughput-24h')).toHaveTextContent('0')
+    expect(screen.getByTestId('throughput-cycle')).toHaveTextContent('—')
+    expect(screen.getByTestId('throughput-7d')).toHaveTextContent('0')
   })
 
   it('renders usage rows and switch action', () => {

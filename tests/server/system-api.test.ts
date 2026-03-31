@@ -14,6 +14,7 @@ import cronRouter, {
 } from '../../server/api/cron.js'
 import vitalsRouter, { createVitalsRouter } from '../../server/api/vitals.js'
 import rateLimitsRouter, { normalizeRateLimitProfiles } from '../../server/api/rate-limits.js'
+import { createStatsRouter } from '../../server/api/stats.js'
 
 function buildApp() {
   const app = express()
@@ -161,5 +162,74 @@ describe('system APIs', () => {
     const app = buildApp()
     const response = await request(app).get('/api/rate-limits')
     expect(response.status).toBeLessThan(500)
+  })
+
+  // ─── Throughput stats ────────────────────────────────────────────────────
+
+  it('returns throughput stats with completed tasks counted correctly', async () => {
+    const now = Date.now()
+    const app = express()
+    app.use(
+      '/api/stats',
+      createStatsRouter({
+        getLocalTasks: () => [
+          { id: 'tsk_1', state: 'DONE', createdAt: now - 3 * 3600_000, completedAt: now - 1000 },
+          { id: 'tsk_2', state: 'DONE', createdAt: now - 48 * 3600_000, completedAt: now - 25 * 3600_000 },
+          { id: 'tsk_3', state: 'EXECUTION', createdAt: now - 1000, completedAt: null },
+        ],
+        getGitHubTasks: () => Promise.resolve([
+          { id: 'gh-1', state: 'DONE', createdAt: now - 2 * 3600_000, completedAt: now - 500 },
+        ]),
+      }),
+    )
+
+    const res = await request(app).get('/api/stats/throughput')
+
+    expect(res.status).toBe(200)
+    expect(res.body.completed_24h).toBe(2)   // tsk_1 + gh-1 (within 24h)
+    expect(res.body.completed_7d).toBe(3)    // tsk_1 + tsk_2 + gh-1 (within 7d)
+    expect(res.body.avg_cycle_time_minutes).toBeGreaterThan(0)
+    expect(res.body.median_cycle_time_minutes).toBeGreaterThan(0)
+    expect(['shrinking', 'stable', 'growing']).toContain(res.body.backlog_trend)
+    expect(res.body.computed_at).toBeTruthy()
+  })
+
+  it('handles zero completed tasks without error', async () => {
+    const app = express()
+    app.use(
+      '/api/stats',
+      createStatsRouter({
+        getLocalTasks: () => [],
+        getGitHubTasks: () => Promise.resolve([]),
+      }),
+    )
+
+    const res = await request(app).get('/api/stats/throughput')
+
+    expect(res.status).toBe(200)
+    expect(res.body.completed_24h).toBe(0)
+    expect(res.body.completed_7d).toBe(0)
+    expect(res.body.avg_cycle_time_minutes).toBe(0)
+    expect(res.body.median_cycle_time_minutes).toBe(0)
+  })
+
+  it('excludes FAILED tasks from throughput count', async () => {
+    const now = Date.now()
+    const app = express()
+    app.use(
+      '/api/stats',
+      createStatsRouter({
+        getLocalTasks: () => [
+          { id: 'tsk_1', state: 'DONE', createdAt: now - 3600_000, completedAt: now - 500 },
+          { id: 'tsk_2', state: 'FAILED', createdAt: now - 3600_000, completedAt: now - 500 },
+        ],
+        getGitHubTasks: () => Promise.resolve([]),
+      }),
+    )
+
+    const res = await request(app).get('/api/stats/throughput')
+
+    expect(res.status).toBe(200)
+    expect(res.body.completed_24h).toBe(1) // only DONE, not FAILED
   })
 })

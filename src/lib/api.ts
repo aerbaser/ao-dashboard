@@ -12,6 +12,7 @@ import type {
   CronResponse,
   VitalsResponse,
   RateLimitsResponse,
+  ThroughputStats,
   Idea,
 } from './types';
 
@@ -467,6 +468,12 @@ export function deleteIdea(id: string): Promise<Idea> {
   return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   })
+}
+
+// ─── Throughput ──────────────────────────────────────────────────────────────
+
+export function getThroughput(): Promise<ThroughputStats> {
+  return fetchJson<ThroughputStats>('/stats/throughput')
 }
 
 // ─── Pipeline ────────────────────────────────────────────────────────────────

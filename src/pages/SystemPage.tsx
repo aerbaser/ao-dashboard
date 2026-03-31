@@ -3,6 +3,7 @@ import ServicesGrid from '../components/system/ServicesGrid'
 import CronCalendar from '../components/system/CronCalendar'
 import ServerVitals from '../components/system/ServerVitals'
 import UsageTracker from '../components/system/UsageTracker'
+import ThroughputWidget from '../components/system/ThroughputWidget'
 import { usePolling } from '../hooks/usePolling'
 import {
   getServices,
@@ -12,6 +13,7 @@ import {
   getVitalsDetail,
   getRateLimits,
   switchRateLimitProfile,
+  getThroughput,
 } from '../lib/api'
 import type { CronEntry, ServiceInfo } from '../lib/types'
 
@@ -22,6 +24,7 @@ export default function SystemPage() {
   const cron = usePolling(getCron, 5000)
   const vitals = usePolling(getVitalsDetail, 5000)
   const rateLimits = usePolling(getRateLimits, 5000)
+  const throughput = usePolling(getThroughput, 60_000)
 
   const showFeedback = (message: string) => {
     setFeedback(message)
@@ -92,6 +95,7 @@ export default function SystemPage() {
         </div>
 
         <div className="space-y-4 min-w-0">
+          <ThroughputWidget data={throughput.data} loading={throughput.loading} />
           <ServerVitals vitals={vitals.data} loading={vitals.loading} />
           <UsageTracker
             data={rateLimits.data}

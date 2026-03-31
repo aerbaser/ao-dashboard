@@ -84,6 +84,9 @@ function PresetBar({
 }) {
   return (
     <div className="flex items-center gap-2 px-3 pt-3 pb-1 bg-bg-surface">
+      {activePreset === null && (
+        <span className="text-xs text-text-disabled font-mono mr-1">custom</span>
+      )}
       {PRESETS.map((p) => (
         <button
           key={p.id}
@@ -97,9 +100,6 @@ function PresetBar({
           {p.label}
         </button>
       ))}
-      {activePreset === null && (
-        <span className="text-xs text-text-disabled font-mono ml-1">custom</span>
-      )}
     </div>
   );
 }

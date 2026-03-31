@@ -55,7 +55,7 @@ function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }
 }
 
 export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }: IdeaCardProps) {
-  const status = idea.status && Object.hasOwn(STATUS_LABELS, idea.status) ? idea.status : 'draft'
+  const status = idea.status && Object.prototype.hasOwnProperty.call(STATUS_LABELS, idea.status) ? idea.status : 'draft'
   const actions = getNextActions(status)
   const [approving, setApproving] = useState(false)
 

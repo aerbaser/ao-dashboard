@@ -42,10 +42,10 @@ describe('TaskCard age badge color', () => {
   afterEach(cleanup);
   const noop = vi.fn();
 
-  it('shows green (emerald) text for fresh EXECUTION task', () => {
+  it('shows neutral (tertiary) text for fresh EXECUTION task', () => {
     render(<TaskCard task={makeTask({ age: 60 })} onClick={noop} />);
     const ageBadge = screen.getByText('1h');
-    expect(ageBadge.className).toContain('text-emerald');
+    expect(ageBadge.className).toContain('text-text-tertiary');
   });
 
   it('shows amber text for EXECUTION task at 120m', () => {
@@ -85,16 +85,16 @@ describe('TaskCard age badge color', () => {
     expect(ageBadge.className).toContain('text-amber');
   });
 
-  it('uses CONTEXT thresholds — green at 200m', () => {
+  it('uses CONTEXT thresholds — neutral at 200m', () => {
     render(<TaskCard task={makeTask({ state: 'CONTEXT', age: 200 })} onClick={noop} />);
     const ageBadge = screen.getByText('3h');
-    expect(ageBadge.className).toContain('text-emerald');
+    expect(ageBadge.className).toContain('text-text-tertiary');
   });
 
   it('does not conflict with AWAITING_OWNER urgency styling', () => {
     render(<TaskCard task={makeTask({ state: 'AWAITING_OWNER', age: 300 })} onClick={noop} />);
     const ageBadge = screen.getByText('5h');
-    // AWAITING_OWNER with 300m uses default thresholds: amber at 180
-    expect(ageBadge.className).toContain('text-amber');
+    // AWAITING_OWNER with 300m uses [60, 180] thresholds: red at >=180
+    expect(ageBadge.className).toContain('text-red');
   });
 });

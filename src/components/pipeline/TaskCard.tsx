@@ -1,9 +1,31 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, TransitionError } from '../../lib/types';
-import { getAgeColor } from '../../lib/age-color';
 import CopyButton from '../ui/CopyButton';
 import FlowStrip from './FlowStrip';
+
+export function ageColor(state: string, ageMinutes: number | null): string {
+  if (ageMinutes === null) return 'text-text-tertiary';
+
+  // State-specific thresholds [amber, red] in minutes
+  const thresholds: Record<string, [number, number]> = {
+    EXECUTION: [120, 480],
+    SETUP: [120, 480],
+    REVIEW_PENDING: [60, 180],
+    CI_PENDING: [60, 180],
+    AWAITING_OWNER: [60, 180],
+    CONTEXT: [240, 720],
+    RESEARCH: [240, 720],
+    DESIGN: [240, 720],
+    PLANNING: [240, 720],
+  };
+
+  const [amberThreshold, redThreshold] = thresholds[state] ?? [180, 480];
+
+  if (ageMinutes >= redThreshold) return 'text-red';
+  if (ageMinutes >= amberThreshold) return 'text-amber';
+  return 'text-text-tertiary';
+}
 
 function timeAgo(minutes: number | null): string {
   if (minutes === null || minutes === undefined) return '—';
@@ -89,20 +111,16 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
 
           {/* Age badge with color signal */}
           {(() => {
-            const ageColor = getAgeColor(task.state, task.age);
-            const colorClass =
-              ageColor === 'red' ? 'text-red' :
-              ageColor === 'amber' ? 'text-amber' :
-              ageColor === 'green' ? 'text-emerald' :
-              'text-text-tertiary';
+            const color = ageColor(task.state, task.age);
+            const ageTitle = color === 'text-red'
+              ? `In ${task.state} for ${timeAgo(task.age)} — consider intervening`
+              : undefined;
             return (
               <span
-                className={`font-mono text-xs ml-auto ${colorClass}`}
-                {...(ageColor === 'red' ? {
-                  title: `In ${task.state} for ${timeAgo(task.age)} — consider intervening`,
-                } : {})}
+                className={`text-xs font-mono ml-auto ${color}`}
+                title={ageTitle}
               >
-                {timeAgo(task.age)}
+                {task.age !== null ? timeAgo(task.age) : '—'}
               </span>
             );
           })()}

@@ -264,6 +264,17 @@ export interface RateLimitsResponse {
   profiles: UsageProfile[];
 }
 
+// ─── Throughput ─────────────────────────────────────────────────────────────
+
+export interface ThroughputStats {
+  completed_24h: number
+  completed_7d: number
+  avg_cycle_time_minutes: number
+  median_cycle_time_minutes: number
+  backlog_trend: 'shrinking' | 'stable' | 'growing'
+  computed_at: string
+}
+
 // ─── Ideas ──────────────────────────────────────────────────────────────────
 
 export const IDEA_STATUSES = [

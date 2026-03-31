@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Live UI / dashboard / API incident
+    url: https://github.com/aerbaser/ao-dashboard/issues/new?template=live-bug.md
+    about: For any user-visible incident, use the live-bug template with affected pages, endpoints, risky states, and proof block.

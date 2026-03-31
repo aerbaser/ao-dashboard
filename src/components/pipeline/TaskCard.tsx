@@ -137,18 +137,18 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
           </div>
         </div>
 
-        {/* Awaiting Owner bar */}
-        {task.state === 'AWAITING_OWNER' && (
-          <div className="mt-2 px-2 py-1 rounded-sm bg-amber/10 text-amber text-xs font-medium">
-            💬 Awaiting your input
-          </div>
-        )}
-
         {/* Last agent message preview — AWAITING_OWNER only */}
         {task.state === 'AWAITING_OWNER' && task.lastAgentMessage && (
-          <p className="text-xs text-text-secondary line-clamp-2 mt-1 border-l-2 border-amber pl-2">
+          <p className="text-xs text-text-secondary line-clamp-2 mt-2 border-l-2 border-amber pl-2">
             {task.lastAgentMessage}
           </p>
+        )}
+
+        {/* Awaiting Owner bar */}
+        {task.state === 'AWAITING_OWNER' && (
+          <div className="mt-1 px-2 py-1 rounded-sm bg-amber/10 text-amber text-xs font-medium">
+            💬 Awaiting your input
+          </div>
         )}
       </div>
 

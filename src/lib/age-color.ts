@@ -19,6 +19,7 @@ function getThresholds(state: PipelineState): AgeThresholds {
       return EXECUTION_THRESHOLDS;
     case 'REVIEW_PENDING':
     case 'CI_PENDING':
+    case 'AWAITING_OWNER':
       return REVIEW_THRESHOLDS;
     case 'CONTEXT':
     case 'RESEARCH':

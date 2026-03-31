@@ -14,6 +14,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  live-smoke:
+    name: Legacy · Endpoint · Contract smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Run focused live-smoke lane
+        run: |
+          mkdir -p artifacts
+          npx vitest run \
+            tests/client/api-path-prefix.test.ts \
+            tests/client/idea-approve.test.tsx \
+            tests/client/ideas.test.tsx \
+            tests/client/system-page.test.tsx \
+            tests/server/agents-api.test.ts \
+            tests/server/config-api.test.ts \
+            tests/server/ideas-api.test.ts \
+            tests/server/system-api.test.ts \
+            tests/server/tasks-list-smoke.test.ts \
+            tests/server/transition-validation.test.ts \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=artifacts/live-smoke-vitest.json
+
+      - name: Upload live-smoke artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-smoke-artifacts
+          path: artifacts/
+          retention-days: 7
+
   ci:
     name: Lint · Typecheck · Test · Build
     runs-on: ubuntu-latest

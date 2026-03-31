@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import type { Idea, IdeaStatus } from '../../lib/types'
 
 interface IdeaCardProps {
   idea: Idea
   onStatusChange: (id: string, status: IdeaStatus) => void
+  onApprove: (id: string) => Promise<void>
   onArchive: (id: string) => void
 }
 
@@ -40,9 +42,9 @@ function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }
     case 'brainstorming':
       return [{ label: 'Mark Ready', next: 'artifact_ready' }]
     case 'artifact_ready':
-      return [{ label: 'Approve', next: 'approved' }]
+      return []  // Approve handled separately via onApprove
     case 'approved':
-      return [{ label: 'Start Work', next: 'in_work' }]
+      return []  // No manual "Start Work" — task creation handles this
     case 'in_work':
       return []
     case 'archived':
@@ -50,8 +52,18 @@ function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }
   }
 }
 
-export default function IdeaCard({ idea, onStatusChange, onArchive }: IdeaCardProps) {
+export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }: IdeaCardProps) {
   const actions = getNextActions(idea.status)
+  const [approving, setApproving] = useState(false)
+
+  const handleApprove = async () => {
+    setApproving(true)
+    try {
+      await onApprove(idea.id)
+    } finally {
+      setApproving(false)
+    }
+  }
 
   return (
     <div
@@ -65,9 +77,19 @@ export default function IdeaCard({ idea, onStatusChange, onArchive }: IdeaCardPr
           <h3 className="text-sm font-medium text-text-primary truncate flex-1">
             {idea.title}
           </h3>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-sm shrink-0 ${STATUS_BADGE_CLASSES[idea.status]}`}>
-            {STATUS_LABELS[idea.status]}
-          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {idea.task_id && (
+              <a
+                href={`/pipeline?task=${idea.task_id}`}
+                className="text-[10px] px-1.5 py-0.5 rounded-sm bg-amber-subtle text-amber font-mono hover:brightness-110 transition-colors"
+              >
+                {idea.task_id}
+              </a>
+            )}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${STATUS_BADGE_CLASSES[idea.status]}`}>
+              {STATUS_LABELS[idea.status]}
+            </span>
+          </div>
         </div>
 
         {/* ID */}
@@ -105,6 +127,15 @@ export default function IdeaCard({ idea, onStatusChange, onArchive }: IdeaCardPr
               {action.label}
             </button>
           ))}
+          {idea.status === 'artifact_ready' && (
+            <button
+              onClick={handleApprove}
+              disabled={approving}
+              className="text-[11px] px-2 py-1 rounded-sm bg-accent-purple-subtle text-accent-purple hover:brightness-110 transition-colors disabled:opacity-50"
+            >
+              {approving ? 'Creating Task…' : 'Approve & Create Task'}
+            </button>
+          )}
           {idea.status !== 'archived' && (
             <button
               onClick={() => onArchive(idea.id)}
@@ -112,11 +143,6 @@ export default function IdeaCard({ idea, onStatusChange, onArchive }: IdeaCardPr
             >
               Archive
             </button>
-          )}
-          {idea.task_id && (
-            <span className="text-[10px] text-text-tertiary font-mono ml-auto">
-              {idea.task_id}
-            </span>
           )}
         </div>
       </div>

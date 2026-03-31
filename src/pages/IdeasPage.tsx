@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { usePolling } from '../hooks/usePolling'
 import { useToast } from '../hooks/useToast'
-import { fetchIdeas, createIdea, updateIdea, deleteIdea } from '../lib/api'
+import { fetchIdeas, createIdea, updateIdea, deleteIdea, createTask, approveIdea } from '../lib/api'
 import type { IdeaStatus } from '../lib/types'
 import IdeaCard from '../components/ideas/IdeaCard'
 import IdeaForm from '../components/ideas/IdeaForm'
@@ -51,6 +51,28 @@ export default function IdeasPage() {
       await refetch()
     } catch (err) {
       push({ message: err instanceof Error ? err.message : 'Failed to update', variant: 'error' })
+    }
+  }
+
+  const handleApprove = async (id: string) => {
+    const idea = ideas?.find((i) => i.id === id)
+    if (!idea) return
+
+    try {
+      const { task_id } = await createTask({
+        title: idea.title,
+        route: 'artifact_route',
+        outcome_type: 'strategy_doc',
+      })
+      await approveIdea(id, task_id)
+      push({
+        message: `Task created: ${task_id}`,
+        variant: 'success',
+        action: { label: 'Open Pipeline', fn: () => { window.location.href = `/pipeline?task=${task_id}` } },
+      })
+      await refetch()
+    } catch (err) {
+      push({ message: err instanceof Error ? err.message : 'Failed to approve idea', variant: 'error' })
     }
   }
 
@@ -145,6 +167,7 @@ export default function IdeasPage() {
               key={idea.id}
               idea={idea}
               onStatusChange={handleStatusChange}
+              onApprove={handleApprove}
               onArchive={handleArchive}
             />
           ))}

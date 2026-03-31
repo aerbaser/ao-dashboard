@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import IdeaCard from '../../src/components/ideas/IdeaCard'
 import IdeaForm from '../../src/components/ideas/IdeaForm'
@@ -18,6 +18,15 @@ function makeIdea(overrides: Partial<Idea> = {}): Idea {
   }
 }
 
+function defaultProps(overrides: Record<string, unknown> = {}) {
+  return {
+    onStatusChange: vi.fn(),
+    onApprove: vi.fn(() => Promise.resolve()),
+    onArchive: vi.fn(),
+    ...overrides,
+  }
+}
+
 describe('IdeaCard', () => {
   afterEach(() => cleanup())
 
@@ -25,60 +34,79 @@ describe('IdeaCard', () => {
 
   statuses.forEach((status) => {
     it(`renders ${status} status correctly`, () => {
-      const onStatusChange = vi.fn()
-      const onArchive = vi.fn()
-      render(<IdeaCard idea={makeIdea({ status })} onStatusChange={onStatusChange} onArchive={onArchive} />)
+      render(<IdeaCard idea={makeIdea({ status })} {...defaultProps()} />)
       expect(screen.getByText('Test idea')).toBeTruthy()
       expect(screen.getByText('idea_20260330_abc123')).toBeTruthy()
     })
   })
 
   it('shows status-specific action buttons', () => {
-    const onStatusChange = vi.fn()
-    const onArchive = vi.fn()
-    render(<IdeaCard idea={makeIdea({ status: 'draft' })} onStatusChange={onStatusChange} onArchive={onArchive} />)
+    render(<IdeaCard idea={makeIdea({ status: 'draft' })} {...defaultProps()} />)
     expect(screen.getByText('Start Brainstorm')).toBeTruthy()
     expect(screen.getByText('Archive')).toBeTruthy()
   })
 
   it('calls onStatusChange when action button clicked', () => {
-    const onStatusChange = vi.fn()
-    const onArchive = vi.fn()
-    render(<IdeaCard idea={makeIdea({ status: 'draft' })} onStatusChange={onStatusChange} onArchive={onArchive} />)
+    const props = defaultProps()
+    render(<IdeaCard idea={makeIdea({ status: 'draft' })} {...props} />)
     fireEvent.click(screen.getByText('Start Brainstorm'))
-    expect(onStatusChange).toHaveBeenCalledWith('idea_20260330_abc123', 'brainstorming')
+    expect(props.onStatusChange).toHaveBeenCalledWith('idea_20260330_abc123', 'brainstorming')
   })
 
   it('calls onArchive when archive button clicked', () => {
-    const onStatusChange = vi.fn()
-    const onArchive = vi.fn()
-    render(<IdeaCard idea={makeIdea({ status: 'draft' })} onStatusChange={onStatusChange} onArchive={onArchive} />)
+    const props = defaultProps()
+    render(<IdeaCard idea={makeIdea({ status: 'draft' })} {...props} />)
     fireEvent.click(screen.getByText('Archive'))
-    expect(onArchive).toHaveBeenCalledWith('idea_20260330_abc123')
+    expect(props.onArchive).toHaveBeenCalledWith('idea_20260330_abc123')
   })
 
   it('renders tags', () => {
-    const onStatusChange = vi.fn()
-    const onArchive = vi.fn()
-    render(<IdeaCard idea={makeIdea()} onStatusChange={onStatusChange} onArchive={onArchive} />)
+    render(<IdeaCard idea={makeIdea()} {...defaultProps()} />)
     expect(screen.getByText('tag1')).toBeTruthy()
     expect(screen.getByText('tag2')).toBeTruthy()
   })
 
   it('shows Restore action for archived status', () => {
-    const onStatusChange = vi.fn()
-    const onArchive = vi.fn()
-    render(<IdeaCard idea={makeIdea({ status: 'archived' })} onStatusChange={onStatusChange} onArchive={onArchive} />)
+    render(<IdeaCard idea={makeIdea({ status: 'archived' })} {...defaultProps()} />)
     expect(screen.getByText('Restore')).toBeTruthy()
     // No archive button for already archived
     expect(screen.queryByText('Archive')).toBeNull()
   })
 
-  it('shows task_id when present', () => {
-    const onStatusChange = vi.fn()
-    const onArchive = vi.fn()
-    render(<IdeaCard idea={makeIdea({ status: 'in_work', task_id: 'tsk_001' })} onStatusChange={onStatusChange} onArchive={onArchive} />)
-    expect(screen.getByText('tsk_001')).toBeTruthy()
+  it('shows task_id badge as link when present', () => {
+    render(<IdeaCard idea={makeIdea({ status: 'approved', task_id: 'tsk_001' })} {...defaultProps()} />)
+    const link = screen.getByText('tsk_001')
+    expect(link).toBeTruthy()
+    expect(link.tagName).toBe('A')
+    expect(link.getAttribute('href')).toBe('/pipeline?task=tsk_001')
+  })
+
+  it('shows "Approve & Create Task" button for artifact_ready status', () => {
+    render(<IdeaCard idea={makeIdea({ status: 'artifact_ready' })} {...defaultProps()} />)
+    expect(screen.getByText('Approve & Create Task')).toBeTruthy()
+  })
+
+  it('calls onApprove when Approve & Create Task clicked', async () => {
+    const props = defaultProps()
+    render(<IdeaCard idea={makeIdea({ status: 'artifact_ready' })} {...props} />)
+    fireEvent.click(screen.getByText('Approve & Create Task'))
+    expect(props.onApprove).toHaveBeenCalledWith('idea_20260330_abc123')
+  })
+
+  it('disables button and shows "Creating Task…" while approving', async () => {
+    let resolve: () => void
+    const slow = new Promise<void>((r) => { resolve = r })
+    const onApprove = vi.fn(() => slow)
+    render(<IdeaCard idea={makeIdea({ status: 'artifact_ready' })} {...defaultProps({ onApprove })} />)
+    fireEvent.click(screen.getByText('Approve & Create Task'))
+    await waitFor(() => expect(screen.getByText('Creating Task…')).toBeTruthy())
+    expect(screen.getByText('Creating Task…').closest('button')).toHaveProperty('disabled', true)
+    resolve!()
+  })
+
+  it('does not show Start Work button for approved status', () => {
+    render(<IdeaCard idea={makeIdea({ status: 'approved' })} {...defaultProps()} />)
+    expect(screen.queryByText('Start Work')).toBeNull()
   })
 })
 

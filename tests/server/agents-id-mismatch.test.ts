@@ -55,7 +55,7 @@ beforeAll(async () => {
   // Heartbeat for sokrat
   writeFileSync(
     join(heartbeatsDir, 'sokrat.json'),
-    JSON.stringify({ state: 'active', updated_at: '2026-03-31T00:00:00Z' }),
+    JSON.stringify({ state: 'active', updated_at: '2026-03-31T00:00:00Z', workspace_path: join(workspacesDir, 'sokrat') }),
   )
 
   // Heartbeat for archimedes
@@ -127,6 +127,13 @@ describe('agent id mismatch — sokrat alias resolution', () => {
   it('GET /api/agents/:id/files/:filename returns 404 for unknown agent workspace', async () => {
     const res = await request(app).get('/api/agents/unknown_agent_xyz/files/AGENTS.md')
     expect(res.status).toBe(404)
+  })
+
+  it('GET /api/agents/sokrat/files/AGENTS.md resolves listed agent files positively', async () => {
+    const res = await request(app).get('/api/agents/sokrat/files/AGENTS.md')
+    expect(res.status).toBe(200)
+    expect(res.body.filename).toBe('AGENTS.md')
+    expect(res.body.content).toContain('Sokrat Agent File')
   })
 
   it('sokrat heartbeat status resolves correctly', async () => {

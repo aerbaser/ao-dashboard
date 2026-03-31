@@ -81,4 +81,18 @@ describe('IdeaCard — legacy / unknown status resilience', () => {
     // Should show Start Brainstorm (draft action)
     expect(screen.getByText('Start Brainstorm')).toBeTruthy()
   })
+
+  it('normalizes prototype-property status "toString" to draft', () => {
+    const idea = makeIdea({ status: 'toString' as IdeaStatus })
+    render(<IdeaCard idea={idea} {...defaultProps()} />)
+    expect(screen.getByText('Draft')).toBeTruthy()
+    expect(screen.getByText('Start Brainstorm')).toBeTruthy()
+  })
+
+  it('normalizes prototype-property status "__proto__" to draft', () => {
+    const idea = makeIdea({ status: '__proto__' as IdeaStatus })
+    render(<IdeaCard idea={idea} {...defaultProps()} />)
+    expect(screen.getByText('Draft')).toBeTruthy()
+    expect(screen.getByText('Start Brainstorm')).toBeTruthy()
+  })
 })

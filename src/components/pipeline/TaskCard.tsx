@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, TransitionError } from '../../lib/types';
+import { getAgeColor } from '../../lib/age-color';
 import CopyButton from '../ui/CopyButton';
 import FlowStrip from './FlowStrip';
 
@@ -86,10 +87,25 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
             {task.route?.replace('_route', '') ?? '—'}
           </span>
 
-          {/* Age */}
-          <span className="font-mono text-xs text-text-tertiary ml-auto">
-            {timeAgo(task.age)}
-          </span>
+          {/* Age badge with color signal */}
+          {(() => {
+            const ageColor = getAgeColor(task.state, task.age);
+            const colorClass =
+              ageColor === 'red' ? 'text-red' :
+              ageColor === 'amber' ? 'text-amber' :
+              ageColor === 'green' ? 'text-emerald' :
+              'text-text-tertiary';
+            return (
+              <span
+                className={`font-mono text-xs ml-auto ${colorClass}`}
+                {...(ageColor === 'red' ? {
+                  title: `In ${task.state} for ${timeAgo(task.age)} — consider intervening`,
+                } : {})}
+              >
+                {timeAgo(task.age)}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Indicators row */}

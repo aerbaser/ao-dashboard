@@ -49,11 +49,14 @@ function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }
       return []
     case 'archived':
       return [{ label: 'Restore', next: 'draft' }]
+    default:
+      return []
   }
 }
 
 export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }: IdeaCardProps) {
-  const actions = getNextActions(idea.status)
+  const status = idea.status && idea.status in STATUS_LABELS ? idea.status : 'draft'
+  const actions = getNextActions(status)
   const [approving, setApproving] = useState(false)
 
   const handleApprove = async () => {
@@ -67,9 +70,9 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
 
   return (
     <div
-      className={`bg-bg-surface border border-border-subtle rounded-md border-l-[3px] ${BORDER_CLASSES[idea.status]} ${
-        idea.status === 'brainstorming' ? 'animate-pulse-active' : ''
-      } ${idea.status === 'archived' ? 'opacity-60' : ''}`}
+      className={`bg-bg-surface border border-border-subtle rounded-md border-l-[3px] ${BORDER_CLASSES[status]} ${
+        status === 'brainstorming' ? 'animate-pulse-active' : ''
+      } ${status === 'archived' ? 'opacity-60' : ''}`}
     >
       <div className="p-3">
         {/* Header */}
@@ -86,8 +89,8 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
                 {idea.task_id}
               </a>
             )}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${STATUS_BADGE_CLASSES[idea.status]}`}>
-              {STATUS_LABELS[idea.status]}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${STATUS_BADGE_CLASSES[status]}`}>
+              {STATUS_LABELS[status]}
             </span>
           </div>
         </div>
@@ -103,7 +106,7 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
         )}
 
         {/* Tags */}
-        {idea.tags.length > 0 && (
+        {idea.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {idea.tags.map((tag) => (
               <span
@@ -127,7 +130,7 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
               {action.label}
             </button>
           ))}
-          {idea.status === 'artifact_ready' && (
+          {status === 'artifact_ready' && (
             <button
               onClick={handleApprove}
               disabled={approving}
@@ -136,7 +139,7 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
               {approving ? 'Creating Task…' : 'Approve & Create Task'}
             </button>
           )}
-          {idea.status !== 'archived' && (
+          {status !== 'archived' && (
             <button
               onClick={() => onArchive(idea.id)}
               className="text-[11px] px-2 py-1 rounded-sm text-text-tertiary hover:text-red hover:bg-red-subtle transition-colors ml-auto"

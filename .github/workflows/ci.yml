@@ -37,16 +37,30 @@ jobs:
             tests/client/api-path-prefix.test.ts \
             tests/client/idea-approve.test.tsx \
             tests/client/ideas.test.tsx \
+            tests/client/ideas-legacy-status.test.tsx \
+            tests/client/pipeline-all-done.test.tsx \
             tests/client/system-page.test.tsx \
             tests/server/agents-api.test.ts \
+            tests/server/agents-id-mismatch.test.ts \
             tests/server/config-api.test.ts \
             tests/server/ideas-api.test.ts \
             tests/server/system-api.test.ts \
             tests/server/tasks-list-smoke.test.ts \
+            tests/server/tasks-edge-cases.test.ts \
             tests/server/transition-validation.test.ts \
             --reporter=default \
             --reporter=json \
-            --outputFile=artifacts/live-smoke-vitest.json
+            --outputFile=artifacts/live-smoke-vitest.json 2>&1 | tee artifacts/live-smoke-console.log
+
+      - name: Smoke failure summary
+        if: failure()
+        run: |
+          echo "## Live-smoke failure summary" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '(FAIL|Error|✗|×|AssertionError)' artifacts/live-smoke-console.log | head -40 >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Full output in live-smoke-artifacts." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload live-smoke artifacts on failure
         if: failure()

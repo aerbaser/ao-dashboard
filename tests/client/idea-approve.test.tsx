@@ -52,7 +52,7 @@ describe('Ideas approve & create task', () => {
     const mockRefetch = vi.fn().mockResolvedValue(undefined)
 
     beforeEach(() => {
-      ;(usePolling as ReturnType<typeof vi.fn>).mockReturnValue({
+      (usePolling as ReturnType<typeof vi.fn>).mockReturnValue({
         data: [makeIdea()],
         loading: false,
         refetch: mockRefetch,
@@ -60,8 +60,8 @@ describe('Ideas approve & create task', () => {
     })
 
     it('approve success: createTask called, then approveIdea with task_id, then success toast', async () => {
-      ;(createTask as ReturnType<typeof vi.fn>).mockResolvedValue({ task_id: 'tsk_abc' })
-      ;(approveIdea as ReturnType<typeof vi.fn>).mockResolvedValue({})
+      (createTask as ReturnType<typeof vi.fn>).mockResolvedValue({ task_id: 'tsk_abc' })
+      (approveIdea as ReturnType<typeof vi.fn>).mockResolvedValue({})
 
       render(<IdeasPage />)
 
@@ -81,7 +81,7 @@ describe('Ideas approve & create task', () => {
     })
 
     it('createTask fails: approveIdea NOT called, error toast shown', async () => {
-      ;(createTask as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'))
+      (createTask as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'))
 
       render(<IdeasPage />)
 

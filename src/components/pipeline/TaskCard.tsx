@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Task, TransitionError } from '../../lib/types';
 import CopyButton from '../ui/CopyButton';
 import FlowStrip from './FlowStrip';
+import { ageColor } from '../../lib/age-color-css';
 
 function timeAgo(minutes: number | null): string {
   if (minutes === null || minutes === undefined) return '—';
@@ -86,10 +87,21 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
             {task.route?.replace('_route', '') ?? '—'}
           </span>
 
-          {/* Age */}
-          <span className="font-mono text-xs text-text-tertiary ml-auto">
-            {timeAgo(task.age)}
-          </span>
+          {/* Age badge with color signal */}
+          {(() => {
+            const color = ageColor(task.state, task.age);
+            const ageTitle = color === 'text-red'
+              ? `In ${task.state} for ${timeAgo(task.age)} — consider intervening`
+              : undefined;
+            return (
+              <span
+                className={`text-xs font-mono ml-auto ${color}`}
+                title={ageTitle}
+              >
+                {task.age !== null ? timeAgo(task.age) : '—'}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Indicators row */}

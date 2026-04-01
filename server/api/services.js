@@ -117,22 +117,34 @@ async function execFileAsync(command, args, options = {}) {
   })
 }
 
+async function querySystemctl(scope, name) {
+  const args = scope === 'user'
+    ? ['--user', 'show', unitName(name)]
+    : ['show', unitName(name)]
+  args.push(
+    '--property=Id',
+    '--property=ActiveState',
+    '--property=SubState',
+    '--property=MemoryCurrent',
+    '--property=ActiveEnterTimestamp',
+  )
+  const { stdout } = await execFileAsync('systemctl', args, { timeout: 2500 })
+  return parseSystemctlShow(stdout)
+}
+
 async function readServiceStatus(name) {
   const meta = SERVICE_META[name]
   if (!meta) return null
 
   try {
-    const { stdout } = await execFileAsync('systemctl', [
-      '--user',
-      'show',
-      unitName(name),
-      '--property=Id',
-      '--property=ActiveState',
-      '--property=SubState',
-      '--property=MemoryCurrent',
-      '--property=ActiveEnterTimestamp',
-    ], { timeout: 2500 })
-    const info = parseSystemctlShow(stdout)
+    // Try user scope first, fall back to system scope if inactive
+    let info = await querySystemctl('user', name).catch(() => null)
+    if (!info || info.ActiveState !== 'active') {
+      const systemInfo = await querySystemctl('system', name).catch(() => null)
+      if (systemInfo?.ActiveState === 'active') info = systemInfo
+    }
+    if (!info) info = { ActiveState: 'inactive', SubState: 'unknown' }
+
     return {
       name,
       display_name: meta.display_name,

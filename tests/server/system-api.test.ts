@@ -158,6 +158,51 @@ describe('system APIs', () => {
     ])
   })
 
+  it('services endpoint reports status from snapshot (dual-mode detection)', async () => {
+    const app = express()
+    app.use(express.json())
+    app.use(
+      '/api/services',
+      createServicesRouter({
+        readForbiddenNames: vi.fn().mockResolvedValue([]),
+        getServicesSnapshot: vi.fn().mockResolvedValue([
+          { name: 'openclaw-gateway', display_name: 'OpenClaw Gateway', group: 'Core', port: 18789, status: 'active', sub_status: 'running', uptime: '1d 2h', memory_mb: 128, forbidden: true },
+          { name: 'dashboard-server', display_name: 'Dashboard Server', group: 'Core', port: 3333, status: 'active', sub_status: 'running', uptime: '3h', memory_mb: 64, forbidden: false },
+        ]),
+        runSystemctlAction: vi.fn(),
+        appendAuditLog: vi.fn(),
+      }),
+    )
+
+    const res = await request(app).get('/api/services')
+    expect(res.status).toBe(200)
+    const gateway = res.body.find((s: { name: string }) => s.name === 'openclaw-gateway')
+    expect(gateway).toBeDefined()
+    expect(gateway.status).toBe('active')
+    expect(gateway.forbidden).toBe(true)
+  })
+
+  it('services endpoint handles inactive service without crashing', async () => {
+    const app = express()
+    app.use(express.json())
+    app.use(
+      '/api/services',
+      createServicesRouter({
+        readForbiddenNames: vi.fn().mockResolvedValue([]),
+        getServicesSnapshot: vi.fn().mockResolvedValue([
+          { name: 'openclaw-gateway', display_name: 'OpenClaw Gateway', group: 'Core', port: 18789, status: 'inactive', sub_status: 'dead', uptime: null, memory_mb: null, forbidden: true },
+        ]),
+        runSystemctlAction: vi.fn(),
+        appendAuditLog: vi.fn(),
+      }),
+    )
+
+    const res = await request(app).get('/api/services')
+    expect(res.status).toBe(200)
+    const gateway = res.body.find((s: { name: string }) => s.name === 'openclaw-gateway')
+    expect(gateway.status).toBe('inactive')
+  })
+
   it('wires the default routers without throwing', async () => {
     const app = buildApp()
     const response = await request(app).get('/api/rate-limits')

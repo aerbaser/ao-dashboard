@@ -96,20 +96,27 @@ const WATCHED_SERVICES = [
   'ao-orchestrator',
 ]
 
+async function isServiceActive(svc) {
+  // Try user scope first, then system scope
+  for (const args of [['--user', 'is-active', svc], ['is-active', svc]]) {
+    try {
+      const { stdout } = await execFileAsync('systemctl', args, { timeout: 3000 })
+      if (stdout.trim() === 'active') return true
+    } catch { /* not active in this scope */ }
+  }
+  return false
+}
+
 async function fetchServices() {
   const cached = cache.get('services')
   if (cached) return cached
 
   try {
     const results = await Promise.all(
-      WATCHED_SERVICES.map(async svc => {
-        try {
-          const { stdout } = await execFileAsync('systemctl', ['is-active', svc], { timeout: 3000 })
-          return { name: svc, active: stdout.trim() === 'active' }
-        } catch {
-          return { name: svc, active: false }
-        }
-      })
+      WATCHED_SERVICES.map(async svc => ({
+        name: svc,
+        active: await isServiceActive(svc),
+      }))
     )
     cache.set('services', results, SERVICES_TTL)
     return results

@@ -28,6 +28,25 @@ const AGENT_META = [
 
 const VALID_FOLDERS = ['inbox', 'processing', 'done', 'deadletter']
 
+/** Map display id → openclaw config id (sokrat is registered as "main") */
+const configIdFor = (id) => id === 'sokrat' ? 'main' : id
+
+/**
+ * Resolve an agent by id: validates against AGENT_META, then tries heartbeat
+ * by exact id and by configIdFor alias. Returns { meta, heartbeat } or null
+ * if the agent id is not in AGENT_META.
+ */
+async function resolveAgent(id) {
+  const meta = AGENT_META.find(a => a.id === id)
+  if (!meta) return null
+
+  let heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${id}.json`))
+  if (!heartbeat && configIdFor(id) !== id) {
+    heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${configIdFor(id)}.json`))
+  }
+  return { meta, heartbeat }
+}
+
 async function safeReadJson(filePath) {
   try {
     const raw = await readFile(filePath, 'utf-8')
@@ -65,7 +84,6 @@ function deriveStatus(heartbeat) {
 // GET /api/agents — list all agents with heartbeat + mailbox counts
 router.get('/', async (_req, res) => {
   try {
-    const configIdFor = (id) => id === 'sokrat' ? 'main' : id
     const openclawConfig = await safeReadJson(OPENCLAW_JSON)
     const agentConfigList = openclawConfig?.agents?.list ?? []
 
@@ -281,11 +299,12 @@ router.get('/:id/files/:filename', async (req, res) => {
   if (!ALLOWED_FILES.includes(filename)) {
     return res.status(400).json({ error: `File not allowed: ${filename}` })
   }
-  const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${id}.json`))
-  if (!heartbeat) {
+  const resolved = await resolveAgent(id)
+  if (!resolved) {
     return res.status(404).json({ error: `Agent '${id}' not found` })
   }
-  const workspacePath = heartbeat.workspace_path ?? join(HOME, '.openclaw', `workspace-${id}`)
+  const { heartbeat } = resolved
+  const workspacePath = heartbeat?.workspace_path ?? join(HOME, '.openclaw', `workspace-${id}`)
   try {
     const content = await readFile(join(workspacePath, filename), 'utf-8')
     res.json({ content, filename })
@@ -307,11 +326,12 @@ router.put('/:id/files/:filename', async (req, res) => {
   if (typeof content !== 'string') {
     return res.status(400).json({ error: 'content must be a string' })
   }
-  const heartbeat = await safeReadJson(join(HEARTBEATS_DIR, `${id}.json`))
-  if (!heartbeat) {
+  const resolved = await resolveAgent(id)
+  if (!resolved) {
     return res.status(404).json({ error: `Agent '${id}' not found` })
   }
-  const workspacePath = heartbeat.workspace_path ?? join(HOME, '.openclaw', `workspace-${id}`)
+  const { heartbeat } = resolved
+  const workspacePath = heartbeat?.workspace_path ?? join(HOME, '.openclaw', `workspace-${id}`)
   await writeFile(join(workspacePath, filename), content, 'utf-8')
   res.json({ ok: true })
 })
@@ -323,7 +343,7 @@ router.get('/:id/skills', async (req, res) => {
     const raw = await readFile(OPENCLAW_JSON, 'utf-8')
     const config = JSON.parse(raw)
     const agentList = config?.agents?.list || []
-    const agent = agentList.find(a => a.id === id)
+    const agent = agentList.find(a => a.id === configIdFor(id))
     if (!agent) {
       return res.status(404).json({ error: `Agent '${id}' not found in openclaw.json` })
     }
@@ -353,7 +373,7 @@ router.put('/:id/skills', async (req, res) => {
     const raw = await readFile(OPENCLAW_JSON, 'utf-8')
     const config = JSON.parse(raw)
     const agentList = config?.agents?.list || []
-    const agentIdx = agentList.findIndex(a => a.id === id)
+    const agentIdx = agentList.findIndex(a => a.id === configIdFor(id))
     if (agentIdx === -1) {
       return res.status(404).json({ ok: false, error: `Agent '${id}' not found in openclaw.json` })
     }

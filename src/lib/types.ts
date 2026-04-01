@@ -114,6 +114,11 @@ export interface TaskDecision {
   summary: string;
 }
 
+export interface TaskSourceRef {
+  repo: string;
+  issue_number: number;
+}
+
 export interface TaskContract {
   schema_version: string;
   task_id: string;
@@ -125,6 +130,8 @@ export interface TaskContract {
   full_solution: boolean;
   approval_policy: string;
   constraints: string[];
+  success_definition?: string[];
+  source_ref?: TaskSourceRef;
   created_at: string;
 }
 
@@ -145,6 +152,10 @@ export interface Task {
   state_entered_at?: string;
   actors?: string[];
   lastAgentMessage?: string | null;
+  source_type?: 'ledger' | 'github';
+  source_ref?: TaskSourceRef;
+  next_action?: string | null;
+  goal?: string | null;
   contract?: TaskContract;
   events?: TaskEvent[];
   decisions?: TaskDecision[];

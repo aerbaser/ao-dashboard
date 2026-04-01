@@ -104,6 +104,25 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
           })()}
         </div>
 
+        {/* Context cue: source + goal/next-action snippet */}
+        <div className="flex items-center gap-1.5 mt-1.5">
+          {task.source_type === 'github' ? (
+            <span className="inline-flex items-center px-1 py-0.5 rounded-sm bg-bg-elevated text-text-tertiary text-[10px] font-mono" title="GitHub issue">
+              GH
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-1 py-0.5 rounded-sm bg-bg-elevated text-text-tertiary text-[10px] font-mono" title="Ledger task">
+              LDG
+            </span>
+          )}
+          {(task.goal || task.next_action) && (
+            <span className="text-xs text-text-tertiary truncate" title={task.goal || task.next_action || undefined}>
+              {(task.goal || task.next_action || '').slice(0, 60)}
+              {(task.goal || task.next_action || '').length > 60 ? '...' : ''}
+            </span>
+          )}
+        </div>
+
         {/* Indicators row */}
         <div className="flex items-center gap-2 mt-2">
           {/* Blockers */}

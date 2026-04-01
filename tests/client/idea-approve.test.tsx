@@ -10,6 +10,8 @@ vi.mock('../../src/lib/api', () => ({
   deleteIdea: vi.fn(),
   createTask: vi.fn(),
   approveIdea: vi.fn(),
+  fetchApprovalQueue: vi.fn(),
+  submitIdeaApprovalDecision: vi.fn(),
 }))
 
 // Mock usePolling
@@ -52,10 +54,13 @@ describe('Ideas approve & create task', () => {
     const mockRefetch = vi.fn().mockResolvedValue(undefined)
 
     beforeEach(() => {
-      (usePolling as ReturnType<typeof vi.fn>).mockReturnValue({
-        data: [makeIdea()],
-        loading: false,
-        refetch: mockRefetch,
+      let call = 0
+      ;(usePolling as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        call += 1
+        if (call % 2 === 1) {
+          return { data: [makeIdea()], loading: false, error: null, refetch: mockRefetch, refresh: mockRefetch }
+        }
+        return { data: [], loading: false, error: null, refetch: vi.fn(), refresh: vi.fn() }
       })
     })
 

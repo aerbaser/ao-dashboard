@@ -11,7 +11,8 @@ const IDEAS_DIR = join(HOME, 'clawd/ideas')
 const SESSIONS_SEND = join(HOME, 'clawd/scripts/sessions-send.js')
 const MAILBOXES_DIR = join(HOME, 'clawd/runtime/mailboxes')
 
-const VALID_STATUSES = ['draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived']
+const VALID_STATUSES = ['draft', 'brainstorming', 'artifact_ready', 'pending_approval', 'approved', 'in_work', 'archived']
+const VALID_DECISION_ACTIONS = ['yes', 'later', 'no', 'rescope']
 const VALID_AGENTS = ['brainstorm-claude', 'brainstorm-codex', 'sokrat']
 const VALID_ID_RE = /^idea_\d{8}_[a-f0-9]{6}$/
 
@@ -139,10 +140,37 @@ router.post('/:id/approve', async (req, res) => {
 
     existing.status = 'approved'
     existing.updated_at = new Date().toISOString()
+    existing.pending_since = null
 
     if (req.body.task_id) {
       existing.task_id = req.body.task_id
     }
+
+    await writeFile(filePath, JSON.stringify(existing, null, 2))
+    res.json(existing)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/ideas/:id/submit-for-approval — transition artifact_ready → pending_approval
+router.post('/:id/submit-for-approval', async (req, res) => {
+  if (!validateId(req, res)) return
+  try {
+    const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
+    const existing = await safeReadJson(filePath)
+    if (!existing) {
+      return res.status(404).json({ error: 'idea not found' })
+    }
+
+    if (existing.status !== 'artifact_ready') {
+      return res.status(400).json({ error: `Cannot submit for approval: status is "${existing.status}", expected "artifact_ready"` })
+    }
+
+    const now = new Date().toISOString()
+    existing.status = 'pending_approval'
+    existing.pending_since = now
+    existing.updated_at = now
 
     await writeFile(filePath, JSON.stringify(existing, null, 2))
     res.json(existing)
@@ -165,6 +193,68 @@ router.delete('/:id', async (req, res) => {
     existing.updated_at = new Date().toISOString()
     await writeFile(filePath, JSON.stringify(existing, null, 2))
     res.json(existing)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/ideas/:id/decision — record an approval decision (yes/later/no/rescope)
+router.post('/:id/decision', async (req, res) => {
+  if (!validateId(req, res)) return
+  try {
+    const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
+    const existing = await safeReadJson(filePath)
+    if (!existing) {
+      return res.status(404).json({ error: 'idea not found' })
+    }
+
+    if (existing.status !== 'pending_approval') {
+      return res.status(409).json({
+        error: 'STALE_STATE',
+        message: `Idea is "${existing.status}", not pending_approval — it may have been resolved elsewhere`,
+        current_status: existing.status,
+      })
+    }
+
+    const { action, reason } = req.body
+    if (!action || !VALID_DECISION_ACTIONS.includes(action)) {
+      return res.status(400).json({ error: `Invalid action: ${action}. Must be one of: ${VALID_DECISION_ACTIONS.join(', ')}` })
+    }
+
+    const now = new Date().toISOString()
+    const decision = {
+      action,
+      actor: 'platon',
+      timestamp: now,
+      reason: reason || undefined,
+    }
+
+    // Append to decisions log
+    if (!Array.isArray(existing.approval_decisions)) {
+      existing.approval_decisions = []
+    }
+    existing.approval_decisions.push(decision)
+    existing.updated_at = now
+
+    // Transition based on action
+    switch (action) {
+      case 'yes':
+        existing.status = 'approved'
+        break
+      case 'later':
+        // Stay pending_approval — no status change
+        break
+      case 'no':
+        existing.status = 'archived'
+        break
+      case 'rescope':
+        existing.status = 'draft'
+        existing.pending_since = null
+        break
+    }
+
+    await writeFile(filePath, JSON.stringify(existing, null, 2))
+    res.json({ ok: true, idea: existing, decision })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

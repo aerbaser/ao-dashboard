@@ -40,6 +40,16 @@ const navItems: NavItem[] = [
     badgeColor: 'amber',
   },
   {
+    to: '/approvals',
+    label: 'Approvals',
+    icon: '✋',
+    badge: (s) => {
+      if (!s) return null
+      return (s.approvals_pending ?? 0) > 0 ? s.approvals_pending : null
+    },
+    badgeColor: 'amber',
+  },
+  {
     to: '/agents',
     label: 'Agents',
     icon: '🤖',

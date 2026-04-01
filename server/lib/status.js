@@ -156,21 +156,23 @@ async function getUsagePercents() {
 
 // ── Ideas actionable count ───────────────────────────────────────────────
 
-async function getIdeasActionableCount() {
+async function getIdeasCounts() {
   try {
     const files = await readdir(IDEAS_DIR)
     const jsonFiles = files.filter(f => f.endsWith('.json'))
-    let count = 0
+    let actionable = 0
+    let pendingApproval = 0
     for (const f of jsonFiles) {
       try {
         const raw = await readFile(join(IDEAS_DIR, f), 'utf8')
         const idea = JSON.parse(raw)
-        if (idea.status === 'draft' || idea.status === 'artifact_ready') count++
+        if (idea.status === 'draft' || idea.status === 'artifact_ready') actionable++
+        if (idea.status === 'pending_approval') pendingApproval++
       } catch { /* skip malformed */ }
     }
-    return count
+    return { ideas_actionable: actionable, approvals_pending: pendingApproval }
   } catch {
-    return 0
+    return { ideas_actionable: 0, approvals_pending: 0 }
   }
 }
 
@@ -178,13 +180,13 @@ async function getIdeasActionableCount() {
 
 export async function getGlobalStatus() {
   // Run all independent reads in parallel
-  const [heartbeats, taskCounts, services, usage, vitals, ideasActionable] = await Promise.all([
+  const [heartbeats, taskCounts, services, usage, vitals, ideasCounts] = await Promise.all([
     getHeartbeats(),
     getTaskCounts(),
     fetchServices(),
     getUsagePercents(),
     Promise.resolve(getVitals()),
-    getIdeasActionableCount(),
+    getIdeasCounts(),
   ])
 
   const gatewayEntry = services.find(s => s.name === 'openclaw-gateway')
@@ -198,6 +200,6 @@ export async function getGlobalStatus() {
     failed_services: failedServices,
     ...vitals,
     ...usage,
-    ideas_actionable: ideasActionable,
+    ...ideasCounts,
   }
 }

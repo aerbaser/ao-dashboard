@@ -10,6 +10,7 @@ vi.mock('../../src/lib/api', () => ({
   deleteIdea: vi.fn(),
   createTask: vi.fn(),
   approveIdea: vi.fn(),
+  submitForApproval: vi.fn(),
 }))
 
 // Mock usePolling
@@ -25,7 +26,7 @@ vi.mock('../../src/hooks/useToast', () => ({
 
 import IdeasPage from '../../src/pages/IdeasPage'
 import IdeaCard from '../../src/components/ideas/IdeaCard'
-import { createTask, approveIdea } from '../../src/lib/api'
+import { createTask, approveIdea, submitForApproval } from '../../src/lib/api'
 import { usePolling } from '../../src/hooks/usePolling'
 
 function makeIdea(overrides: Partial<Idea> = {}): Idea {
@@ -59,37 +60,30 @@ describe('Ideas approve & create task', () => {
       })
     })
 
-    it('approve success: createTask called, then approveIdea with task_id, then success toast', async () => {
-      (createTask as ReturnType<typeof vi.fn>).mockResolvedValue({ task_id: 'tsk_abc' });
-      (approveIdea as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    it('submit for approval success: calls submitForApproval and shows success toast', async () => {
+      (submitForApproval as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
       render(<IdeasPage />)
 
-      fireEvent.click(screen.getByText('Approve & Create Task'))
+      fireEvent.click(screen.getByText('Submit for Approval'))
 
       await waitFor(() => {
-        expect(createTask).toHaveBeenCalledWith({
-          title: 'Test idea',
-          route: 'artifact_route',
-          outcome_type: 'strategy_doc',
-        })
-        expect(approveIdea).toHaveBeenCalledWith('idea_001', 'tsk_abc')
+        expect(submitForApproval).toHaveBeenCalledWith('idea_001')
         expect(mockPush).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Task created: tsk_abc', variant: 'success' })
+          expect.objectContaining({ message: 'Submitted for approval', variant: 'success' })
         )
       })
     })
 
-    it('createTask fails: approveIdea NOT called, error toast shown', async () => {
-      (createTask as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+    it('submit for approval fails: error toast shown', async () => {
+      (submitForApproval as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
 
       render(<IdeasPage />)
 
-      fireEvent.click(screen.getByText('Approve & Create Task'))
+      fireEvent.click(screen.getByText('Submit for Approval'))
 
       await waitFor(() => {
-        expect(createTask).toHaveBeenCalled()
-        expect(approveIdea).not.toHaveBeenCalled()
+        expect(submitForApproval).toHaveBeenCalled()
         expect(mockPush).toHaveBeenCalledWith(
           expect.objectContaining({ message: 'Network error', variant: 'error' })
         )

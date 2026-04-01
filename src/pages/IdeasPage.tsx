@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { usePolling } from '../hooks/usePolling'
 import { useToast } from '../hooks/useToast'
-import { fetchIdeas, createIdea, updateIdea, deleteIdea, createTask, approveIdea } from '../lib/api'
+import { fetchIdeas, createIdea, updateIdea, deleteIdea, createTask, approveIdea, submitForApproval } from '../lib/api'
 import type { IdeaStatus } from '../lib/types'
 import IdeaCard from '../components/ideas/IdeaCard'
 import IdeaForm from '../components/ideas/IdeaForm'
@@ -12,6 +12,7 @@ const FILTER_TABS: { label: string; value: IdeaStatus | 'all' }[] = [
   { label: 'Draft', value: 'draft' },
   { label: 'Brainstorming', value: 'brainstorming' },
   { label: 'Ready', value: 'artifact_ready' },
+  { label: 'Pending', value: 'pending_approval' },
   { label: 'In Work', value: 'in_work' },
   { label: 'Archived', value: 'archived' },
 ]
@@ -73,6 +74,16 @@ export default function IdeasPage() {
       await refetch()
     } catch (err) {
       push({ message: err instanceof Error ? err.message : 'Failed to approve idea', variant: 'error' })
+    }
+  }
+
+  const handleSubmitForApproval = async (id: string) => {
+    try {
+      await submitForApproval(id)
+      push({ message: 'Submitted for approval', variant: 'success' })
+      await refetch()
+    } catch (err) {
+      push({ message: err instanceof Error ? err.message : 'Failed to submit for approval', variant: 'error' })
     }
   }
 
@@ -168,6 +179,7 @@ export default function IdeasPage() {
               idea={idea}
               onStatusChange={handleStatusChange}
               onApprove={handleApprove}
+              onSubmitForApproval={handleSubmitForApproval}
               onArchive={handleArchive}
             />
           ))}

@@ -13,9 +13,12 @@ const MAILBOXES_DIR = join(HOME, 'clawd/runtime/mailboxes')
 const TASK_STORE = join(HOME, 'clawd/scripts/task-store.js')
 
 const VALID_STATUSES = ['draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived', 'reviewed', 'approval_needed']
+// In-process lock: tracks idea IDs currently being routed. The check+add is
+// synchronous so it is atomic with respect to the Node.js event loop.
+const routingInFlight = new Set()
 const VALID_AGENTS = ['brainstorm-claude', 'brainstorm-codex', 'sokrat']
 const VALID_ID_RE = /^idea_\d{8}_[a-f0-9]{6}$/
-const APPROVAL_QUEUE_STATES = new Set(['pending', 'later', 'no', 'rescope', 'routing_failed', 'routed'])
+const APPROVAL_QUEUE_STATES = new Set(['pending', 'later', 'no', 'rescope', 'routing_failed', 'routed', 'routing_in_progress'])
 const APPROVAL_DECISIONS = new Map([
   ['yes', 'routed'],
   ['later', 'later'],
@@ -314,7 +317,7 @@ router.post('/:id/decision', async (req, res) => {
     if (!currentApproval) {
       return res.status(409).json({ error: 'STALE_DECISION', detail: 'Idea no longer requires approval' })
     }
-    if (currentApproval.state === 'routed') {
+    if (currentApproval.state === 'routed' || currentApproval.state === 'routing_in_progress') {
       return res.status(409).json({ error: 'STALE_DECISION', detail: 'Idea already routed' })
     }
 
@@ -330,6 +333,22 @@ router.post('/:id/decision', async (req, res) => {
     }
 
     if (decision === 'yes') {
+      // Synchronously claim the in-process lock before any await.  Node.js is
+      // single-threaded: no other handler can interleave between here and the
+      // routingInFlight.add() call below, so exactly one concurrent Yes request
+      // wins the claim and the rest get 409.
+      if (routingInFlight.has(req.params.id)) {
+        return res.status(409).json({ error: 'STALE_DECISION', detail: 'Idea already routed' })
+      }
+      routingInFlight.add(req.params.id)
+
+      // Also persist routing_in_progress to disk before the external call so
+      // a late stale-state reader (or a server restart mid-flight) sees the
+      // lock rather than a spurious 'pending'.
+      existing.approval = { ...existing.approval, state: 'routing_in_progress', error: null }
+      existing.updated_at = now
+      await writeFile(filePath, JSON.stringify(existing, null, 2))
+
       try {
         const taskId = await createApprovalTask(existing, currentApproval)
         existing.status = 'approved'
@@ -343,6 +362,7 @@ router.post('/:id/decision', async (req, res) => {
         }
         existing.updated_at = now
         await writeFile(filePath, JSON.stringify(existing, null, 2))
+        routingInFlight.delete(req.params.id)
         try {
           await logTaskDecision(taskId, existing.id, note)
         } catch {
@@ -359,6 +379,7 @@ router.post('/:id/decision', async (req, res) => {
         }
         existing.updated_at = now
         await writeFile(filePath, JSON.stringify(existing, null, 2))
+        routingInFlight.delete(req.params.id)
         return res.status(502).json({ error: 'ROUTING_FAILED', detail: String(err.message || err) })
       }
     }

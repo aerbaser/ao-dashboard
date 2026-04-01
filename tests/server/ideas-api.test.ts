@@ -374,6 +374,47 @@ describe('Ideas approval queue', () => {
     expect(res.body.error).toBe('STALE_DECISION')
   })
 
+  it('concurrent Yes decisions route exactly once (no duplicate-task race)', async () => {
+    await writeIdea({
+      id: 'idea_20260401_abc001',
+      title: 'Concurrent route target',
+      body: 'Race test',
+      status: 'draft',
+      tags: [],
+      target_agent: 'platon',
+      created_at: '2026-04-01T10:00:00Z',
+      updated_at: '2026-04-01T10:00:00Z',
+      approval: {
+        state: 'pending',
+        requested_at: '2026-04-01T10:00:00Z',
+        reason: 'Need explicit approval',
+        route: 'artifact_route',
+        expected_outcome: 'strategy_doc',
+        owner: 'platon',
+        next_action: 'Await operator decision',
+      },
+    })
+
+    // Fire two Yes decisions concurrently — exactly one must succeed (200) and
+    // the other must be rejected (409 STALE_DECISION).
+    const [r1, r2] = await Promise.all([
+      request(app).post('/api/ideas/idea_20260401_abc001/decision').send({ decision: 'yes', note: 'first' }),
+      request(app).post('/api/ideas/idea_20260401_abc001/decision').send({ decision: 'yes', note: 'second' }),
+    ])
+
+    const statuses = [r1.status, r2.status].sort()
+    expect(statuses).toEqual([200, 409])
+
+    const winner = r1.status === 200 ? r1 : r2
+    expect(winner.body.approval_state).toBe('routed')
+    expect(winner.body.task_id).toMatch(/^tsk_test_/)
+
+    const saved = await readIdea('idea_20260401_abc001')
+    expect(saved.approval.state).toBe('routed')
+    // Only one task was created
+    expect(saved.task_id).toMatch(/^tsk_test_/)
+  })
+
   it('persists routing failure truthfully when task creation fails', async () => {
     await writeIdea({
       id: 'idea_20260401_ffffff',

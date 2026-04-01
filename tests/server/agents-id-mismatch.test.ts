@@ -155,4 +155,34 @@ describe('agent id mismatch — sokrat alias resolution', () => {
     expect(herodotus.skills).toEqual([])
     expect(herodotus.model).toBeNull()
   })
+
+  it('GET /api/agents/sokrat/skills resolves via configIdFor to main config', async () => {
+    const res = await request(app).get('/api/agents/sokrat/skills')
+    expect(res.status).toBe(200)
+    expect(res.body.skills).toEqual(['orchestrate', 'delegate'])
+  })
+
+  it('GET /api/agents/archimedes/skills resolves without alias', async () => {
+    const res = await request(app).get('/api/agents/archimedes/skills')
+    expect(res.status).toBe(200)
+    expect(res.body.skills).toEqual(['build', 'test'])
+  })
+
+  it('GET /api/agents/leo/files/AGENTS.md returns empty content for agent without heartbeat (not 404)', async () => {
+    // leo is in AGENT_META but has no heartbeat file — should not 404
+    const res = await request(app).get('/api/agents/leo/files/AGENTS.md')
+    expect(res.status).toBe(200)
+    expect(res.body.filename).toBe('AGENTS.md')
+    expect(res.body.content).toBe('')
+  })
+
+  it('every listed agent id resolves in files endpoint without 404', async () => {
+    const listRes = await request(app).get('/api/agents')
+    expect(listRes.status).toBe(200)
+
+    for (const agent of listRes.body) {
+      const fileRes = await request(app).get(`/api/agents/${agent.id}/files/AGENTS.md`)
+      expect(fileRes.status).not.toBe(404)
+    }
+  })
 })

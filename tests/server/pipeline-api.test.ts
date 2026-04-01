@@ -149,16 +149,18 @@ type PipelineItem = {
 }
 
 describe('pipeline API', () => {
-  it('returns only agent:archimedes issues from both repos', async () => {
+  it('returns all issues including those without agent:archimedes (#154)', async () => {
     const res = await request(app).get('/api/pipeline')
     expect(res.status).toBe(200)
 
     const items: PipelineItem[] = res.body
-    // 4 archimedes issues from ao-dashboard + 1 from sokrat-core = 5
-    expect(items).toHaveLength(5)
+    // 5 ao-dashboard issues + 1 sokrat-core = 6 (issue 104 is now included)
+    expect(items).toHaveLength(6)
 
-    // Issue 104 (no agent:archimedes label) should be filtered out
-    expect(items.find(i => i.number === 104)).toBeUndefined()
+    // Issue 104 (no agent:archimedes) should now be visible with needs_triage status
+    const issue104 = items.find(i => i.number === 104)
+    expect(issue104).toBeDefined()
+    expect(issue104!.status).toBe('needs_triage')
   })
 
   it('maps session status to pipeline status correctly', async () => {
@@ -207,10 +209,12 @@ describe('pipeline API', () => {
 
     const items: PipelineItem[] = res.body
     const statuses = items.map(i => i.status)
-    // in_progress should come before review, which comes before queued/done
+    // needs_triage should come first, then in_progress, then review, then done
+    const triageIdx = statuses.indexOf('needs_triage')
     const inProgressIdx = statuses.indexOf('in_progress')
     const reviewIdx = statuses.indexOf('review')
     const doneIdx = statuses.indexOf('done')
+    expect(triageIdx).toBeLessThan(inProgressIdx)
     expect(inProgressIdx).toBeLessThan(reviewIdx)
     expect(reviewIdx).toBeLessThan(doneIdx)
   })

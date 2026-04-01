@@ -425,12 +425,32 @@ export default function Pipeline() {
 
       {/* Kanban board */}
       <div className="flex-1 overflow-hidden">
-        <KanbanBoard
-          tasks={filteredTasks}
-          onCardClick={handleCardClick}
-          onRefresh={refresh}
-          hideEmpty={hideEmpty}
-        />
+        {tasks && tasks.length > 0 && filteredTasks.length === 0 ? (
+          <div className="flex items-center justify-center h-full" data-testid="filtered-empty-state">
+            <div className="flex flex-col items-center gap-4 p-8 bg-bg-surface border border-border-subtle rounded-lg text-center max-w-sm animate-fade-in">
+              <span className="text-2xl text-text-tertiary">⊘</span>
+              <p className="text-sm font-medium text-text-secondary">
+                All {tasks.length} tasks are hidden by the current filter
+              </p>
+              <p className="text-xs font-mono text-text-tertiary">
+                0 matching / {tasks.length} total
+              </p>
+              <button
+                onClick={() => handlePresetClick('all')}
+                className="mt-1 px-4 py-1.5 text-sm font-semibold rounded-sm bg-amber text-text-inverse hover:brightness-110 transition-all"
+              >
+                Show all tasks
+              </button>
+            </div>
+          </div>
+        ) : (
+          <KanbanBoard
+            tasks={filteredTasks}
+            onCardClick={handleCardClick}
+            onRefresh={refresh}
+            hideEmpty={hideEmpty}
+          />
+        )}
       </div>
 
       {/* Task detail slide-in */}

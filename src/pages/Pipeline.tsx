@@ -55,13 +55,31 @@ const STORAGE_KEY = 'pipeline-filter-state';
 interface StoredFilterState {
   preset: PresetId | null;
   filters: Filters;
+  hideEmpty?: boolean;
+}
+
+/** Schema version for localStorage migration. Bump when defaults change. */
+const STORAGE_VERSION = 2;
+
+interface VersionedStoredState extends StoredFilterState {
+  version?: number;
 }
 
 function loadFilterState(): StoredFilterState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed: VersionedStoredState = JSON.parse(raw);
+
+    // Migrate: old versions (or missing version) that defaulted to active-only
+    // should be reset so the user gets the new "All" default instead of a
+    // silently persisted misleading active-only view.
+    if (!parsed.version || parsed.version < STORAGE_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    return parsed;
   } catch {
     return null;
   }
@@ -69,7 +87,8 @@ function loadFilterState(): StoredFilterState | null {
 
 function saveFilterState(state: StoredFilterState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const versioned: VersionedStoredState = { ...state, version: STORAGE_VERSION };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(versioned));
   } catch { /* ignore */ }
 }
 
@@ -313,13 +332,13 @@ export default function Pipeline() {
   // Load initial filter state from localStorage
   const savedState = useRef(loadFilterState());
   const [filters, setFilters] = useState<Filters>(
-    savedState.current?.filters ?? { owners: [], route: '', stateGroup: 'active' }
+    savedState.current?.filters ?? { owners: [], route: '', stateGroup: 'all' }
   );
   const [activePreset, setActivePreset] = useState<PresetId | null>(
-    savedState.current?.preset ?? null
+    savedState.current !== null ? savedState.current.preset : 'all'
   );
 
-  const [hideEmpty, setHideEmpty] = useState(false);
+  const [hideEmpty, setHideEmpty] = useState(savedState.current ? savedState.current.hideEmpty ?? true : true);
   const [showSearch, setShowSearch] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
 
@@ -332,8 +351,8 @@ export default function Pipeline() {
 
   // Persist filter state to localStorage
   useEffect(() => {
-    saveFilterState({ preset: activePreset, filters });
-  }, [activePreset, filters]);
+    saveFilterState({ preset: activePreset, filters, hideEmpty });
+  }, [activePreset, filters, hideEmpty]);
 
   const handlePresetClick = useCallback((id: PresetId) => {
     const preset = PRESETS.find((p) => p.id === id)!;

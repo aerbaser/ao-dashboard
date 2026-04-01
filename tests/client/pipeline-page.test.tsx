@@ -123,18 +123,17 @@ describe('Pipeline page (full Kanban)', () => {
     })
   })
 
-  it('defaults stateGroup to active on mount', () => {
+  it('defaults stateGroup to all on mount (issue #160)', () => {
     render(<Pipeline />)
-    // EXECUTION is an active state — should be visible
+    // All states visible with 'all' default
     expect(screen.getByText('EXECUTION')).toBeInTheDocument()
-    // Build feature X is in EXECUTION (active) — should be visible
     expect(screen.getByText('Build feature X')).toBeInTheDocument()
-    // DONE tasks should NOT appear with active default
-    expect(screen.queryByText('Deploy service Y')).not.toBeInTheDocument()
+    // DONE tasks should also appear with 'all' default
+    expect(screen.getByText('Deploy service Y')).toBeInTheDocument()
   })
 
   it('renders all columns when stateGroup is set to all via localStorage', () => {
-    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
+    localStorage.setItem('pipeline-filter-state', JSON.stringify({ version: 2, preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
     render(<Pipeline />)
     expect(screen.getByText('EXECUTION')).toBeInTheDocument()
     expect(screen.getByText('DONE')).toBeInTheDocument()
@@ -142,7 +141,7 @@ describe('Pipeline page (full Kanban)', () => {
   })
 
   it('displays task cards in correct columns when stateGroup=all', () => {
-    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
+    localStorage.setItem('pipeline-filter-state', JSON.stringify({ version: 2, preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
     render(<Pipeline />)
     expect(screen.getByText('Build feature X')).toBeInTheDocument()
     expect(screen.getByText('Deploy service Y')).toBeInTheDocument()
@@ -151,9 +150,10 @@ describe('Pipeline page (full Kanban)', () => {
 
   it('persists stateGroup selection to localStorage', () => {
     render(<Pipeline />)
-    // Default 'active' should be saved in pipeline-filter-state
+    // Default 'all' should be saved in pipeline-filter-state (issue #160)
     const stored = JSON.parse(localStorage.getItem('pipeline-filter-state')!)
-    expect(stored.filters.stateGroup).toBe('active')
+    expect(stored.filters.stateGroup).toBe('all')
+    expect(stored.version).toBe(2)
   })
 
   it('shows freshness indicator', () => {
@@ -166,26 +166,25 @@ describe('Pipeline page (full Kanban)', () => {
     expect(screen.getByRole('button', { name: /create task/i })).toBeInTheDocument()
   })
 
-  it('shows task count in header (active default)', () => {
+  it('shows task count in header (all default)', () => {
     render(<Pipeline />)
-    // Default stateGroup='active' → only EXECUTION (1/3 tasks)
-    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+    // Default stateGroup='all' (issue #160) → all 3 tasks visible
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
-  it('counter shows filtered/total when stateGroup filter is active', () => {
+  it('counter shows filtered/total when stateGroup filter is changed', () => {
     render(<Pipeline />)
-    // Default is 'active' — only EXECUTION (1/3 tasks)
-    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
-    // Change to 'all' — all 3 tasks visible
-    const stateSelect = screen.getByDisplayValue('Active')
-    fireEvent.change(stateSelect, { target: { value: 'all' } })
+    // Default is 'all' — all 3 tasks visible
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
+    // Change to 'active' — only EXECUTION (1/3 tasks)
+    const stateSelect = screen.getByDisplayValue('All states')
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
   })
 
   it('counter shows filtered/total when owner filter is active', async () => {
     const user = userEvent.setup()
-    // Use stateGroup=all so owner filter is the only active filter
-    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
+    // Default is stateGroup=all (issue #160)
     render(<Pipeline />)
     // All 3 tasks visible initially
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
@@ -199,23 +198,26 @@ describe('Pipeline page (full Kanban)', () => {
 
   it('counter shows total when all filters are reset', () => {
     render(<Pipeline />)
-    // Start with active filter (default) — 1/3 tasks
+    // Default is 'all' (issue #160) — 3 tasks
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+    // Switch to active — 1/3 tasks
+    const stateSelect = screen.getByDisplayValue('All states')
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
     expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
-    // Reset to 'all' — 3 tasks (no filter active)
-    const stateSelect = screen.getByDisplayValue('Active')
+    // Reset back to 'all' — 3 tasks
     fireEvent.change(stateSelect, { target: { value: 'all' } })
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
   it('counter updates when stateGroup changes', () => {
     render(<Pipeline />)
-    // Start at 'active' (default) — 1/3 tasks
-    const stateSelect = screen.getByDisplayValue('Active')
-    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
-
-    // All states: all 3 tasks
-    fireEvent.change(stateSelect, { target: { value: 'all' } })
+    // Start at 'all' (default, issue #160) — all 3 tasks
+    const stateSelect = screen.getByDisplayValue('All states')
     expect(screen.getByText('3 tasks')).toBeInTheDocument()
+
+    // Active: only EXECUTION (1 task)
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
+    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
 
     // Terminal: only DONE (1 task)
     fireEvent.change(stateSelect, { target: { value: 'terminal' } })
@@ -252,8 +254,12 @@ describe('Pipeline page (full Kanban)', () => {
       refresh: vi.fn(),
     })
 
-    // Default is 'active' already — all tasks are DONE → 0/3
+    // Default is 'all' (issue #160) — all DONE tasks are visible → 3 tasks
     render(<Pipeline />)
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+    // Switch to active — 0/3
+    const stateSelect = screen.getByDisplayValue('All states')
+    fireEvent.change(stateSelect, { target: { value: 'active' } })
     expect(screen.getByText('0 / 3 tasks')).toBeInTheDocument()
   })
 
@@ -263,17 +269,17 @@ describe('Pipeline page (full Kanban)', () => {
     expect(screen.getByTestId('multi-select-trigger')).toHaveTextContent('All owners')
   })
 
-  it('shows hide empty checkbox in filter bar (not header)', () => {
+  it('shows hide empty checkbox in filter bar (checked by default, issue #160)', () => {
     render(<Pipeline />)
     const hideEmptyCheckbox = screen.getByRole('checkbox', { name: /hide empty/i })
     expect(hideEmptyCheckbox).toBeInTheDocument()
-    // Should be unchecked by default
-    expect(hideEmptyCheckbox).not.toBeChecked()
+    // Should be checked by default (issue #160)
+    expect(hideEmptyCheckbox).toBeChecked()
   })
 
   it('multi-owner filter shows tasks from all selected owners', async () => {
     const user = userEvent.setup()
-    localStorage.setItem('pipeline-filter-state', JSON.stringify({ preset: null, filters: { owners: [], route: '', stateGroup: 'all' } }))
+    // Default is already stateGroup=all (issue #160), no localStorage needed
     render(<Pipeline />)
 
     // Open multi-select dropdown

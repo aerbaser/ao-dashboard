@@ -24,7 +24,6 @@ const AO_STATUS_MAP = {
 function ghIssues(repo) {
   return new Promise((resolve) => {
     execFile(GH_BIN, ['issue', 'list', '--repo', repo, '--state', 'all',
-      '--label', 'agent:archimedes',
       '--json', 'number,title,state,labels,createdAt,closedAt',
       '--limit', '50'], { timeout: 15000 }, (err, stdout) => {
       if (err) return resolve([])
@@ -60,16 +59,34 @@ async function getGitHubTasks() {
     const pid = repos[ri].split('/')[1]
     for (const issue of issueArrays[ri]) {
       const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name)
+      const agentLabel = labels.find(l => l.startsWith('agent:'))
       const session = sessionMap.get(`${pid}#${issue.number}`)
+
       let state = 'PLANNING'
-      if (issue.state === 'CLOSED' || issue.closedAt) state = 'DONE'
-      else if (session) state = AO_STATUS_MAP[session.status] || 'EXECUTION'
-      else if (labels.includes('agent:backlog')) state = 'PLANNING'
-      else state = 'SETUP'
+      let owner = 'platon'
+
+      if (issue.state === 'CLOSED' || issue.closedAt) {
+        state = 'DONE'
+      } else if (session) {
+        state = AO_STATUS_MAP[session.status] || 'EXECUTION'
+        owner = 'archimedes'
+      } else if (!agentLabel) {
+        state = 'INTAKE'
+        owner = 'unrouted'
+      } else if (agentLabel === 'agent:backlog') {
+        state = 'PLANNING'
+      } else if (agentLabel === 'agent:archimedes') {
+        state = 'SETUP'
+      } else {
+        // Other agent labels (agent:hephaestus, agent:platon, etc.)
+        state = 'INTAKE'
+        owner = agentLabel.replace('agent:', '')
+      }
+
       tasks.push({
         task_id: `gh-${pid}-${issue.number}`,
         contract: { title: issue.title, route: 'build_route', outcome_type: 'app_release' },
-        status: { state, current_owner: session ? 'archimedes' : 'platon', current_route: 'build_route',
+        status: { state, current_owner: owner, current_route: 'build_route',
           blockers: [], retries: 0, updated_at: issue.closedAt || issue.createdAt,
           last_material_update: issue.closedAt || issue.createdAt },
         actors: session ? ['platon', 'archimedes'] : ['platon'],

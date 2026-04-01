@@ -289,10 +289,52 @@ export interface ThroughputStats {
 // ─── Ideas ──────────────────────────────────────────────────────────────────
 
 export const IDEA_STATUSES = [
-  'draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived',
+  'draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived', 'reviewed', 'approval_needed',
 ] as const;
 
 export type IdeaStatus = (typeof IDEA_STATUSES)[number];
+
+export const APPROVAL_STATES = [
+  'pending', 'later', 'no', 'rescope', 'routing_failed', 'routed',
+] as const;
+
+export type ApprovalState = (typeof APPROVAL_STATES)[number];
+
+export const APPROVAL_DECISIONS = ['yes', 'later', 'no', 'rescope'] as const;
+
+export type ApprovalDecision = (typeof APPROVAL_DECISIONS)[number];
+
+export interface IdeaApproval {
+  state: ApprovalState
+  requested_at?: string | null
+  reason?: string | null
+  route?: string | null
+  expected_outcome?: string | null
+  owner?: string | null
+  next_action?: string | null
+  decided_at?: string | null
+  decided_by?: string | null
+  decision_note?: string | null
+  task_id?: string | null
+  error?: string | null
+}
+
+export interface ApprovalQueueItem {
+  id: string
+  title: string
+  why: string
+  route: string
+  expected_outcome: string
+  owner: string
+  pending_since: string | null
+  freshness_updated_at: string | null
+  next_action: string
+  approval_state: ApprovalState
+  task_id?: string | null
+  decision_note?: string | null
+  error?: string | null
+  idea_status: string
+}
 
 export interface Idea {
   id: string;
@@ -307,6 +349,9 @@ export interface Idea {
   artifact_generated_at?: string | null;
   task_id?: string | null;
   brainstorm_session_id?: string | null;
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  approval?: IdeaApproval | null;
   created_at: string;
   updated_at: string;
 }

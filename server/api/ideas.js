@@ -10,10 +10,18 @@ const HOME = process.env.HOME || '/home/aiadmin'
 const IDEAS_DIR = join(HOME, 'clawd/ideas')
 const SESSIONS_SEND = join(HOME, 'clawd/scripts/sessions-send.js')
 const MAILBOXES_DIR = join(HOME, 'clawd/runtime/mailboxes')
+const TASK_STORE = join(HOME, 'clawd/scripts/task-store.js')
 
-const VALID_STATUSES = ['draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived']
+const VALID_STATUSES = ['draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived', 'reviewed', 'approval_needed']
 const VALID_AGENTS = ['brainstorm-claude', 'brainstorm-codex', 'sokrat']
 const VALID_ID_RE = /^idea_\d{8}_[a-f0-9]{6}$/
+const APPROVAL_QUEUE_STATES = new Set(['pending', 'later', 'no', 'rescope', 'routing_failed', 'routed'])
+const APPROVAL_DECISIONS = new Map([
+  ['yes', 'routed'],
+  ['later', 'later'],
+  ['no', 'no'],
+  ['rescope', 'rescope'],
+])
 
 /** Validate idea :id param — prevents path traversal */
 function validateId(req, res) {
@@ -45,6 +53,144 @@ function generateId() {
   return `idea_${date}_${hex}`
 }
 
+function normalizeApproval(idea) {
+  const approval = idea?.approval
+  if (approval && APPROVAL_QUEUE_STATES.has(approval.state)) {
+    return {
+      state: approval.state,
+      requested_at: approval.requested_at || approval.pending_since || idea.updated_at || idea.created_at || null,
+      reason: approval.reason || approval.decision_note || idea.review_note || 'Approval required before routing',
+      route: approval.route || 'artifact_route',
+      expected_outcome: approval.expected_outcome || 'strategy_doc',
+      owner: approval.owner || 'platon',
+      next_action: approval.next_action || (approval.state === 'routed' && approval.task_id
+        ? `Track routed task ${approval.task_id}`
+        : 'Await operator decision'),
+      decided_at: approval.decided_at || null,
+      decided_by: approval.decided_by || null,
+      decision_note: approval.decision_note || null,
+      task_id: approval.task_id || idea.task_id || null,
+      error: approval.error || null,
+    }
+  }
+
+  if (idea?.status === 'artifact_ready') {
+    return {
+      state: 'pending',
+      requested_at: idea.updated_at || idea.created_at || null,
+      reason: 'Artifact is ready and needs product approval before routing',
+      route: 'artifact_route',
+      expected_outcome: 'strategy_doc',
+      owner: 'platon',
+      next_action: 'Review the artifact and decide whether to route it',
+      decided_at: null,
+      decided_by: null,
+      decision_note: null,
+      task_id: idea.task_id || null,
+      error: null,
+    }
+  }
+
+  if (idea?.status === 'reviewed') {
+    return {
+      state: 'pending',
+      requested_at: idea.reviewed_at || idea.updated_at || idea.created_at || null,
+      reason: idea.review_note || 'Reviewed and waiting for approval before routing',
+      route: 'artifact_route',
+      expected_outcome: 'strategy_doc',
+      owner: idea.target_agent || 'platon',
+      next_action: 'Review the idea and decide whether to route it',
+      decided_at: null,
+      decided_by: null,
+      decision_note: null,
+      task_id: idea.task_id || null,
+      error: null,
+    }
+  }
+
+  return null
+}
+
+function toApprovalQueueItem(idea) {
+  const approval = normalizeApproval(idea)
+  if (!approval) return null
+
+  return {
+    id: idea.id,
+    title: idea.title,
+    why: approval.reason,
+    route: approval.route,
+    expected_outcome: approval.expected_outcome,
+    owner: approval.owner,
+    pending_since: approval.requested_at,
+    freshness_updated_at: idea.updated_at || approval.requested_at,
+    next_action: approval.next_action,
+    approval_state: approval.state,
+    task_id: approval.task_id,
+    decision_note: approval.decision_note,
+    error: approval.error,
+    idea_status: idea.status || 'draft',
+  }
+}
+
+function sortQueue(a, b) {
+  const aTs = a.pending_since || a.freshness_updated_at || ''
+  const bTs = b.pending_since || b.freshness_updated_at || ''
+  return bTs.localeCompare(aTs)
+}
+
+function runTaskStore(args) {
+  return new Promise((resolve, reject) => {
+    execFile('node', [TASK_STORE, ...args], { timeout: 15_000 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error((stderr || err.message || '').trim()))
+        return
+      }
+      resolve((stdout || '').trim())
+    })
+  })
+}
+
+async function createApprovalTask(idea, approval) {
+  const args = ['create', '--title', idea.title]
+  if (approval.route) args.push('--route', approval.route)
+  if (approval.expected_outcome) args.push('--outcome', approval.expected_outcome)
+  if (idea.body) args.push('--raw_request', idea.body)
+
+  const stdout = await runTaskStore(args)
+  const taskId = stdout.match(/tsk_[A-Za-z0-9_]+/)?.[0]
+  if (!taskId) {
+    throw new Error(`Task creation succeeded but no task id was returned: ${stdout}`)
+  }
+  return taskId
+}
+
+async function logTaskDecision(taskId, ideaId, note) {
+  const summary = note || `Idea ${ideaId} approved and routed`
+  await runTaskStore([
+    'decision',
+    taskId,
+    JSON.stringify({
+      gate_type: 'idea_approval',
+      result: 'yes',
+      resolved_by: 'dashboard',
+      resolution_mode: 'operator_override',
+      summary,
+      idea_id: ideaId,
+    }),
+  ])
+  await runTaskStore([
+    'event',
+    taskId,
+    'IDEA_APPROVED_AND_ROUTED',
+    JSON.stringify({
+      actor: 'dashboard',
+      idea_id: ideaId,
+      note: note || null,
+    }),
+  ])
+}
+
 // GET /api/ideas — list all (with optional ?status= filter)
 router.get('/', async (req, res) => {
   try {
@@ -67,6 +213,27 @@ router.get('/', async (req, res) => {
     res.json(filtered)
   } catch (err) {
     res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/ideas/approval-queue — first-class approval lane
+router.get('/approval-queue', async (_req, res) => {
+  try {
+    await ensureDir()
+    const files = await readdir(IDEAS_DIR)
+    const jsonFiles = files.filter(f => f.endsWith('.json'))
+    const ideas = (await Promise.all(
+      jsonFiles.map(f => safeReadJson(join(IDEAS_DIR, f)))
+    )).filter(Boolean)
+
+    const queue = ideas
+      .map(toApprovalQueueItem)
+      .filter(Boolean)
+      .sort(sortQueue)
+
+    res.json(queue)
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
   }
 })
 
@@ -124,6 +291,94 @@ router.put('/:id', async (req, res) => {
     res.json(existing)
   } catch (err) {
     res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/ideas/:id/decision — durable approval queue action
+router.post('/:id/decision', async (req, res) => {
+  if (!validateId(req, res)) return
+  try {
+    const decision = String(req.body?.decision || '').toLowerCase()
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim() : ''
+    if (!APPROVAL_DECISIONS.has(decision)) {
+      return res.status(400).json({ error: 'INVALID_DECISION', detail: `Unsupported decision: ${decision}` })
+    }
+
+    const filePath = join(IDEAS_DIR, `${req.params.id}.json`)
+    const existing = await safeReadJson(filePath)
+    if (!existing) {
+      return res.status(404).json({ error: 'idea not found' })
+    }
+
+    const currentApproval = normalizeApproval(existing)
+    if (!currentApproval) {
+      return res.status(409).json({ error: 'STALE_DECISION', detail: 'Idea no longer requires approval' })
+    }
+    if (currentApproval.state === 'routed') {
+      return res.status(409).json({ error: 'STALE_DECISION', detail: 'Idea already routed' })
+    }
+
+    const now = new Date().toISOString()
+    existing.approval = {
+      ...(existing.approval || {}),
+      ...currentApproval,
+      requested_at: currentApproval.requested_at,
+      decided_at: now,
+      decided_by: 'dashboard',
+      decision_note: note || null,
+      error: null,
+    }
+
+    if (decision === 'yes') {
+      try {
+        const taskId = await createApprovalTask(existing, currentApproval)
+        existing.status = 'approved'
+        existing.task_id = taskId
+        existing.approval = {
+          ...existing.approval,
+          state: 'routed',
+          task_id: taskId,
+          next_action: `Track routed task ${taskId}`,
+          error: null,
+        }
+        existing.updated_at = now
+        await writeFile(filePath, JSON.stringify(existing, null, 2))
+        try {
+          await logTaskDecision(taskId, existing.id, note)
+        } catch {
+          // Routing truth is already persisted on the idea; task log failure is non-fatal here.
+        }
+        return res.json({ ok: true, approval_state: 'routed', task_id: taskId })
+      } catch (err) {
+        existing.approval = {
+          ...existing.approval,
+          state: 'routing_failed',
+          task_id: null,
+          next_action: 'Retry routing after the failure is resolved',
+          error: String(err.message || err),
+        }
+        existing.updated_at = now
+        await writeFile(filePath, JSON.stringify(existing, null, 2))
+        return res.status(502).json({ error: 'ROUTING_FAILED', detail: String(err.message || err) })
+      }
+    }
+
+    existing.approval = {
+      ...existing.approval,
+      state: APPROVAL_DECISIONS.get(decision),
+      task_id: null,
+      next_action: decision === 'later'
+        ? 'Keep visible until revisited'
+        : decision === 'no'
+          ? 'Keep visible with rejection reason until resolved'
+          : 'Keep visible until the idea is rescoped',
+    }
+    existing.updated_at = now
+    await writeFile(filePath, JSON.stringify(existing, null, 2))
+
+    res.json({ ok: true, approval_state: existing.approval.state })
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
   }
 })
 

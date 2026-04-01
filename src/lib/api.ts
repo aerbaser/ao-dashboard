@@ -14,6 +14,8 @@ import type {
   RateLimitsResponse,
   ThroughputStats,
   Idea,
+  ApprovalQueueItem,
+  ApprovalDecision,
 } from './types';
 
 const BASE = '/api';
@@ -482,6 +484,24 @@ export function deleteIdea(id: string): Promise<Idea> {
   return request<Idea>(`/ideas/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   })
+}
+
+export function fetchApprovalQueue(): Promise<ApprovalQueueItem[]> {
+  return fetchJson<ApprovalQueueItem[]>('/ideas/approval-queue')
+}
+
+export function submitIdeaApprovalDecision(
+  id: string,
+  decision: ApprovalDecision,
+  note?: string,
+): Promise<{ ok: true; approval_state: string; task_id?: string | null }> {
+  return request<{ ok: true; approval_state: string; task_id?: string | null }>(
+    `/ideas/${encodeURIComponent(id)}/decision`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ decision, note }),
+    },
+  )
 }
 
 // ─── Throughput ──────────────────────────────────────────────────────────────

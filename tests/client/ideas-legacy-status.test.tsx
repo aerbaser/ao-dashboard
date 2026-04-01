@@ -3,8 +3,29 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import IdeaCard from '../../src/components/ideas/IdeaCard'
 import type { Idea, IdeaStatus } from '../../src/lib/types'
 
+// Mock dependencies for IdeasPage-level tests
+vi.mock('../../src/lib/api', () => ({
+  fetchIdeas: vi.fn(),
+  createIdea: vi.fn(),
+  updateIdea: vi.fn(),
+  deleteIdea: vi.fn(),
+  createTask: vi.fn(),
+  approveIdea: vi.fn(),
+}))
+
+vi.mock('../../src/hooks/usePolling', () => ({
+  usePolling: vi.fn(),
+}))
+
+vi.mock('../../src/hooks/useToast', () => ({
+  useToast: vi.fn(() => ({ push: vi.fn() })),
+}))
+
+import IdeasPage from '../../src/pages/IdeasPage'
+import { usePolling } from '../../src/hooks/usePolling'
+
 /**
- * Regression coverage for #148 — legacy ideas with status="reviewed"
+ * Regression coverage for #150 — legacy ideas with status="reviewed"
  * or null/missing status must not crash the UI path.
  */
 
@@ -94,5 +115,42 @@ describe('IdeaCard — legacy / unknown status resilience', () => {
     render(<IdeaCard idea={idea} {...defaultProps()} />)
     expect(screen.getByText('Draft')).toBeTruthy()
     expect(screen.getByText('Start Brainstorm')).toBeTruthy()
+  })
+
+})
+
+describe('IdeasPage — full page smoke with mixed valid + legacy statuses', () => {
+  afterEach(() => cleanup())
+
+  it('renders all ideas in a single page render without crash', () => {
+    const mixedIdeas = [
+      makeIdea({ id: 'idea_001', title: 'Valid draft', status: 'draft' }),
+      makeIdea({ id: 'idea_002', title: 'Legacy reviewed', status: 'reviewed' as IdeaStatus }),
+      makeIdea({ id: 'idea_003', title: 'Valid brainstorming', status: 'brainstorming' }),
+      makeIdea({ id: 'idea_004', title: 'Null status', status: null as unknown as IdeaStatus }),
+      makeIdea({ id: 'idea_005', title: 'Valid archived', status: 'archived' }),
+      makeIdea({ id: 'idea_006', title: 'Unknown pending', status: 'pending' as IdeaStatus }),
+    ]
+
+    vi.mocked(usePolling).mockReturnValue({
+      data: mixedIdeas,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      refresh: vi.fn(),
+    })
+
+    render(<IdeasPage />)
+
+    // Every idea title must appear — page rendered the full list
+    expect(screen.getByText('Valid draft')).toBeTruthy()
+    expect(screen.getByText('Legacy reviewed')).toBeTruthy()
+    expect(screen.getByText('Valid brainstorming')).toBeTruthy()
+    expect(screen.getByText('Null status')).toBeTruthy()
+    expect(screen.getByText('Valid archived')).toBeTruthy()
+    expect(screen.getByText('Unknown pending')).toBeTruthy()
+
+    // "All" tab count should reflect all 6 ideas
+    expect(screen.getByText('6')).toBeTruthy()
   })
 })

@@ -5,6 +5,7 @@ interface IdeaCardProps {
   idea: Idea
   onStatusChange: (id: string, status: IdeaStatus) => void
   onApprove: (id: string) => Promise<void>
+  onSubmitForApproval?: (id: string) => Promise<void>
   onArchive: (id: string) => void
 }
 
@@ -12,6 +13,7 @@ const STATUS_LABELS: Record<IdeaStatus, string> = {
   draft: 'Draft',
   brainstorming: 'Brainstorming',
   artifact_ready: 'Ready',
+  pending_approval: 'Pending Approval',
   approved: 'Approved',
   in_work: 'In Work',
   archived: 'Archived',
@@ -21,6 +23,7 @@ const STATUS_BADGE_CLASSES: Record<IdeaStatus, string> = {
   draft: 'bg-idea-draft text-text-secondary',
   brainstorming: 'bg-blue-subtle text-blue',
   artifact_ready: 'bg-emerald-subtle text-emerald',
+  pending_approval: 'bg-accent-purple-subtle text-accent-purple',
   approved: 'bg-accent-purple-subtle text-accent-purple',
   in_work: 'bg-amber-subtle text-amber',
   archived: 'bg-bg-overlay text-text-tertiary',
@@ -30,6 +33,7 @@ const BORDER_CLASSES: Record<IdeaStatus, string> = {
   draft: 'border-l-idea-draft',
   brainstorming: 'border-l-idea-brainstorming',
   artifact_ready: 'border-l-idea-artifact-ready',
+  pending_approval: 'border-l-accent-purple',
   approved: 'border-l-idea-approved',
   in_work: 'border-l-idea-in-work',
   archived: 'border-l-idea-archived',
@@ -42,7 +46,9 @@ function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }
     case 'brainstorming':
       return [{ label: 'Mark Ready', next: 'artifact_ready' }]
     case 'artifact_ready':
-      return []  // Approve handled separately via onApprove
+      return []  // Submit for Approval handled separately via onSubmitForApproval
+    case 'pending_approval':
+      return []  // Decisions handled in Approvals page
     case 'approved':
       return []  // No manual "Start Work" — task creation handles this
     case 'in_work':
@@ -54,10 +60,11 @@ function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }
   }
 }
 
-export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }: IdeaCardProps) {
+export default function IdeaCard({ idea, onStatusChange, onApprove, onSubmitForApproval, onArchive }: IdeaCardProps) {
   const status = idea.status && Object.prototype.hasOwnProperty.call(STATUS_LABELS, idea.status) ? idea.status : 'draft'
   const actions = getNextActions(status)
   const [approving, setApproving] = useState(false)
+  const [submittingApproval, setSubmittingApproval] = useState(false)
 
   const handleApprove = async () => {
     setApproving(true)
@@ -65,6 +72,16 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
       await onApprove(idea.id)
     } finally {
       setApproving(false)
+    }
+  }
+
+  const handleSubmitForApproval = async () => {
+    if (!onSubmitForApproval) return
+    setSubmittingApproval(true)
+    try {
+      await onSubmitForApproval(idea.id)
+    } finally {
+      setSubmittingApproval(false)
     }
   }
 
@@ -130,7 +147,16 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
               {action.label}
             </button>
           ))}
-          {status === 'artifact_ready' && (
+          {status === 'artifact_ready' && onSubmitForApproval && (
+            <button
+              onClick={handleSubmitForApproval}
+              disabled={submittingApproval}
+              className="text-[11px] px-2 py-1 rounded-sm bg-accent-purple-subtle text-accent-purple hover:brightness-110 transition-colors disabled:opacity-50"
+            >
+              {submittingApproval ? 'Submitting…' : 'Submit for Approval'}
+            </button>
+          )}
+          {status === 'artifact_ready' && !onSubmitForApproval && (
             <button
               onClick={handleApprove}
               disabled={approving}
@@ -138,6 +164,14 @@ export default function IdeaCard({ idea, onStatusChange, onApprove, onArchive }:
             >
               {approving ? 'Creating Task…' : 'Approve & Create Task'}
             </button>
+          )}
+          {status === 'pending_approval' && (
+            <a
+              href="/approvals"
+              className="text-[11px] px-2 py-1 rounded-sm bg-accent-purple-subtle text-accent-purple hover:brightness-110 transition-colors"
+            >
+              View in Approvals
+            </a>
           )}
           {status !== 'archived' && (
             <button

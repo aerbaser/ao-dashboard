@@ -14,6 +14,7 @@ export interface GlobalStatus {
   awaiting_owner_count: number
   awaiting_owner_overdue: boolean
   ideas_actionable: number
+  approvals_pending: number
   timestamp: string
 }
 
@@ -289,10 +290,20 @@ export interface ThroughputStats {
 // ─── Ideas ──────────────────────────────────────────────────────────────────
 
 export const IDEA_STATUSES = [
-  'draft', 'brainstorming', 'artifact_ready', 'approved', 'in_work', 'archived',
+  'draft', 'brainstorming', 'artifact_ready', 'pending_approval',
+  'approved', 'in_work', 'archived',
 ] as const;
 
 export type IdeaStatus = (typeof IDEA_STATUSES)[number];
+
+export type ApprovalAction = 'yes' | 'later' | 'no' | 'rescope';
+
+export interface ApprovalDecision {
+  action: ApprovalAction;
+  actor: string;
+  timestamp: string;
+  reason?: string;
+}
 
 export interface Idea {
   id: string;
@@ -307,6 +318,8 @@ export interface Idea {
   artifact_generated_at?: string | null;
   task_id?: string | null;
   brainstorm_session_id?: string | null;
+  pending_since?: string | null;
+  approval_decisions?: ApprovalDecision[];
   created_at: string;
   updated_at: string;
 }

@@ -11,6 +11,10 @@ import type { Task, PipelineState } from '../../src/lib/types'
  *  - one-click recovery action ("Show all tasks")
  *
  * True zero-data state must remain distinct.
+ *
+ * NOTE: As of #160 the default preset is "All" with Hide empty on,
+ * so filtered-empty only triggers after the user explicitly narrows
+ * the filter (e.g. switching to Active when all tasks are DONE).
  */
 
 // ─── DnD kit mocks ──────────────────────────────────────────────────────────
@@ -103,6 +107,11 @@ function mockPolling(data: Task[] | null, loading = false) {
   })
 }
 
+/** Switch the board to Active preset so only active states are shown. */
+function switchToActive() {
+  fireEvent.click(screen.getByRole('button', { name: 'Active' }))
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('Pipeline — filtered-empty state (#148)', () => {
@@ -116,11 +125,25 @@ describe('Pipeline — filtered-empty state (#148)', () => {
     localStorage.clear()
   })
 
-  // ── All tasks DONE + default Active filter ─────────────────────────────
+  // ── Default is All (#160) — no filtered-empty on fresh load ───────────
 
-  it('shows filtered-empty state when all tasks are DONE and default filter is Active', () => {
+  it('does NOT show filtered-empty state on fresh load when all tasks are DONE (default=All, #160)', () => {
     mockPolling(allDoneTasks)
     render(<Pipeline />)
+
+    // Default is All — all DONE tasks are visible, no filtered-empty
+    expect(screen.queryByTestId('filtered-empty-state')).not.toBeInTheDocument()
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+  })
+
+  // ── All tasks DONE + user switches to Active filter ───────────────────
+
+  it('shows filtered-empty state when user switches to Active and all tasks are DONE', () => {
+    mockPolling(allDoneTasks)
+    render(<Pipeline />)
+
+    // Switch to Active — all DONE tasks are hidden
+    switchToActive()
 
     const emptyState = screen.getByTestId('filtered-empty-state')
     expect(emptyState).toBeInTheDocument()
@@ -131,6 +154,7 @@ describe('Pipeline — filtered-empty state (#148)', () => {
   it('filtered-empty state includes "Show all tasks" recovery button', () => {
     mockPolling(allDoneTasks)
     render(<Pipeline />)
+    switchToActive()
 
     expect(screen.getByRole('button', { name: /show all tasks/i })).toBeInTheDocument()
   })
@@ -138,6 +162,7 @@ describe('Pipeline — filtered-empty state (#148)', () => {
   it('"Show all tasks" reveals hidden tasks', () => {
     mockPolling(allDoneTasks)
     render(<Pipeline />)
+    switchToActive()
 
     // Initially filtered-empty
     expect(screen.getByTestId('filtered-empty-state')).toBeInTheDocument()
@@ -155,6 +180,7 @@ describe('Pipeline — filtered-empty state (#148)', () => {
   it('"Show all tasks" sets the All preset as active', () => {
     mockPolling(allDoneTasks)
     render(<Pipeline />)
+    switchToActive()
 
     fireEvent.click(screen.getByRole('button', { name: /show all tasks/i }))
 
@@ -175,21 +201,21 @@ describe('Pipeline — filtered-empty state (#148)', () => {
 
   // ── Mixed dataset ──────────────────────────────────────────────────────
 
-  it('does NOT show filtered-empty state when some tasks match current filter', () => {
+  it('does NOT show filtered-empty state when all tasks match default All filter', () => {
     mockPolling(mixedTasks)
     render(<Pipeline />)
 
-    // Active filter shows 1 active task out of 3 — no filtered-empty state
+    // Default is All (#160) — all 3 tasks visible, no filtered-empty
     expect(screen.queryByTestId('filtered-empty-state')).not.toBeInTheDocument()
-    expect(screen.getByText('Active task tsk_a1')).toBeInTheDocument()
-    expect(screen.getByText('1 / 3 tasks')).toBeInTheDocument()
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
-  // ── Persisted/default Active preset ────────────────────────────────────
+  // ── Persisted Active preset (version 2) ────────────────────────────────
 
-  it('shows filtered-empty state when persisted Active preset hides all tasks', () => {
-    // Simulate persisted Active preset in localStorage
+  it('shows filtered-empty state when persisted Active preset (v2) hides all tasks', () => {
+    // Simulate persisted Active preset in localStorage (version 2 required by #160)
     localStorage.setItem('pipeline-filter-state', JSON.stringify({
+      version: 2,
       preset: 'active',
       filters: { owners: [], route: '', stateGroup: 'active' },
     }))
@@ -200,8 +226,23 @@ describe('Pipeline — filtered-empty state (#148)', () => {
     expect(screen.getByText(/All 3 tasks are hidden/)).toBeInTheDocument()
   })
 
+  it('old localStorage (no version) is migrated to All default, no filtered-empty (#160)', () => {
+    // Old persisted Active preset without version — should be migrated/cleared
+    localStorage.setItem('pipeline-filter-state', JSON.stringify({
+      preset: 'active',
+      filters: { owners: [], route: '', stateGroup: 'active' },
+    }))
+    mockPolling(allDoneTasks)
+    render(<Pipeline />)
+
+    // Migration clears old state → defaults to All → no filtered-empty
+    expect(screen.queryByTestId('filtered-empty-state')).not.toBeInTheDocument()
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
+  })
+
   it('recovery works from persisted Active filter state', () => {
     localStorage.setItem('pipeline-filter-state', JSON.stringify({
+      version: 2,
       preset: 'active',
       filters: { owners: [], route: '', stateGroup: 'active' },
     }))
@@ -229,10 +270,10 @@ describe('Pipeline — filtered-empty state (#148)', () => {
     mockPolling(allDoneTasks)
     render(<Pipeline />)
 
-    // Start in filtered-empty (Active preset, all DONE)
-    expect(screen.getByTestId('filtered-empty-state')).toBeInTheDocument()
+    // Default is All — no filtered-empty yet
+    expect(screen.queryByTestId('filtered-empty-state')).not.toBeInTheDocument()
 
-    // Switch to Blocked preset — still no matching tasks
+    // Switch to Blocked preset — no matching tasks
     fireEvent.click(screen.getByRole('button', { name: 'Blocked' }))
     expect(screen.getByTestId('filtered-empty-state')).toBeInTheDocument()
     expect(screen.getByText(/All 3 tasks are hidden/)).toBeInTheDocument()
@@ -242,6 +283,8 @@ describe('Pipeline — filtered-empty state (#148)', () => {
     mockPolling(allDoneTasks)
     render(<Pipeline />)
 
+    // Switch to Active to trigger filtered-empty
+    switchToActive()
     expect(screen.getByTestId('filtered-empty-state')).toBeInTheDocument()
 
     // Click "All" preset button directly

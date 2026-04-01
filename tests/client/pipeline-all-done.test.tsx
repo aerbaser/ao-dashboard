@@ -95,8 +95,8 @@ describe('Pipeline — all tasks DONE / empty active view regression', () => {
     })
 
     render(<Pipeline />)
-    // Default stateGroup is 'active', so all DONE tasks are filtered out → 0 / 3
-    expect(screen.getByText('0 / 3 tasks')).toBeInTheDocument()
+    // Default stateGroup is 'all' (issue #160), so all 3 DONE tasks are visible
+    expect(screen.getByText('3 tasks')).toBeInTheDocument()
   })
 
   it('All preset shows 3 tasks when all are DONE (no crash)', () => {

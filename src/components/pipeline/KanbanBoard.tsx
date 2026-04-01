@@ -139,6 +139,24 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading, hideEmpty 
           return (a.age ?? Infinity) - (b.age ?? Infinity);
         });
       }
+      if (state === 'DONE') {
+        // Sort newest-first: use state_entered_at (best signal for completion
+        // time), then fall back to age ASC (lower age = more recent).
+        // If neither is available, sort by task id descending for determinism.
+        return filtered.sort((a, b) => {
+          const aAt = a.state_entered_at;
+          const bAt = b.state_entered_at;
+          if (aAt && bAt) return bAt.localeCompare(aAt); // DESC — newest first
+          if (aAt) return -1; // a has timestamp, b doesn't → a first
+          if (bAt) return 1;
+          // Fallback: age (lower = more recent → sort ASC to put recent first)
+          if (a.age != null && b.age != null) return a.age - b.age;
+          if (a.age != null) return -1;
+          if (b.age != null) return 1;
+          // Final deterministic fallback: id descending
+          return b.id.localeCompare(a.id);
+        });
+      }
       return filtered;
     },
     [tasks]

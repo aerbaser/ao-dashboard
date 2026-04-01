@@ -176,8 +176,9 @@ describe('Pipeline presets & localStorage', () => {
   })
 
   it('restores custom filters from localStorage', () => {
-    // Pre-seed localStorage with custom filter state
+    // Pre-seed localStorage with custom filter state (version 2 required for migration, issue #160)
     const customState = {
+      version: 2,
       preset: null,
       filters: { owners: ['archimedes'], route: '', stateGroup: 'all' as const },
     }

@@ -6,6 +6,7 @@ import { EventTimeline } from './EventTimeline';
 import { CommentThread } from './CommentThread';
 import { CommentInput } from './CommentInput';
 import FlowStrip from './FlowStrip';
+import { OperatorSummary } from './OperatorSummary';
 
 interface TaskDetailProps {
   task: Task;
@@ -131,6 +132,9 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
           <div className="p-4 text-text-secondary text-sm">Loading...</div>
         ) : (
           <div className="p-4 space-y-6">
+            {/* Operator Summary */}
+            <OperatorSummary task={task} contract={contract} />
+
             {/* Actor Flow */}
             {(task.actors && task.actors.length > 0 || task.owner) && (
               <section>

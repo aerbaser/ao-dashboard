@@ -85,11 +85,17 @@ async function getGitHubTasks() {
 
       tasks.push({
         task_id: `gh-${pid}-${issue.number}`,
-        contract: { title: issue.title, route: 'build_route', outcome_type: 'app_release' },
+        contract: {
+          title: issue.title, route: 'build_route', outcome_type: 'app_release',
+          raw_request: issue.title,
+          source_ref: { repo: repos[ri], issue_number: issue.number },
+        },
         status: { state, current_owner: owner, current_route: 'build_route',
           blockers: [], retries: 0, updated_at: issue.closedAt || issue.createdAt,
-          last_material_update: issue.closedAt || issue.createdAt },
+          last_material_update: issue.closedAt || issue.createdAt,
+          next_action: session?.status ? `AO session: ${session.status}` : null },
         actors: session ? ['platon', 'archimedes'] : ['platon'],
+        source_type: 'github',
       })
     }
   }
@@ -205,7 +211,7 @@ router.get('/', async (_req, res) => {
           const events = await readNDJSON(join(TASKS_DIR, id, 'events.ndjson'))
           const actors = extractActors(events)
           const lastAgentMessage = extractLastAgentMessage(events)
-          tasks.push({ task_id: id, contract, status, actors, lastAgentMessage })
+          tasks.push({ task_id: id, contract, status, actors, lastAgentMessage, source_type: 'ledger' })
         } catch { /* skip */ }
       }
     } catch { /* dir may not exist */ }
@@ -241,7 +247,7 @@ router.get('/:id', async (req, res) => {
     ])
     const actors = extractActors(events)
 
-    res.json({ task_id: id, contract, status, events, decisions, actors })
+    res.json({ task_id: id, contract, status, events, decisions, actors, source_type: 'ledger' })
   } catch (e) {
     res.status(500).json({ ok: false, error: 'INTERNAL', detail: e.message })
   }

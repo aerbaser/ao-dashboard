@@ -68,10 +68,12 @@ interface TaskListResponse {
     retries?: number;
     updated_at?: string;
     last_material_update?: string;
+    next_action?: string | null;
     [key: string]: unknown;
   };
   actors?: string[];
   lastAgentMessage?: string | null;
+  source_type?: 'ledger' | 'github';
 }
 
 interface TaskDetailResponse extends TaskListResponse {
@@ -86,6 +88,14 @@ const TERMINAL = ['DONE', 'FAILED', 'CANCELLED', 'SUPERSEDED'];
 function minutesAgo(iso?: string | null): number | null {
   if (!iso) return null;
   return Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+}
+
+function deriveGoal(c: TaskContract | undefined): string | null {
+  if (!c) return null;
+  const defs = c.success_definition;
+  if (defs && defs.length > 0) return defs[0].slice(0, 200);
+  if (c.raw_request) return c.raw_request.slice(0, 200);
+  return null;
 }
 
 function toTask(item: TaskListResponse): Task {
@@ -109,6 +119,10 @@ function toTask(item: TaskListResponse): Task {
     contract: c,
     actors: item.actors || [],
     lastAgentMessage: item.lastAgentMessage ?? null,
+    source_type: item.source_type ?? (c?.source_ref ? 'github' : 'ledger'),
+    source_ref: c?.source_ref,
+    next_action: s.next_action ?? null,
+    goal: deriveGoal(c),
   };
 }
 

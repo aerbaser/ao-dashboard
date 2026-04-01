@@ -56,33 +56,65 @@ function getTooltip(actor: string): string {
 
 interface FlowStripProps {
   actors: string[];
+  currentOwner?: string;
   maxVisible?: number;
 }
 
-export default function FlowStrip({ actors, maxVisible = 5 }: FlowStripProps) {
-  if (!actors || actors.length === 0) return null;
+export default function FlowStrip({ actors, currentOwner, maxVisible = 5 }: FlowStripProps) {
+  const normalizedOwner = currentOwner ? normalizeActor(currentOwner) : null;
+  const hasActors = actors && actors.length > 0;
 
-  const normalized = actors.map(normalizeActor);
+  // If no actors and no currentOwner, render nothing
+  if (!hasActors && !normalizedOwner) return null;
+
+  let normalized = hasActors ? actors.map(normalizeActor) : [];
+
+  // If currentOwner is absent from actors[], append it
+  if (normalizedOwner && !normalized.includes(normalizedOwner)) {
+    normalized = [...normalized, normalizedOwner];
+  }
+
+  // For overflow: ensure currentOwner stays visible
+  // If owner would be hidden by overflow, adjust visible slice to include owner
   const overflow = normalized.length > maxVisible ? normalized.length - (maxVisible - 1) : 0;
-  const visible = overflow > 0 ? normalized.slice(0, maxVisible - 1) : normalized;
+  let visible: string[];
+  if (overflow > 0) {
+    const ownerIndex = normalizedOwner ? normalized.indexOf(normalizedOwner) : -1;
+    const defaultVisible = normalized.slice(0, maxVisible - 1);
+    if (normalizedOwner && ownerIndex >= maxVisible - 1) {
+      // Owner would be hidden — replace last visible slot with owner
+      visible = [...defaultVisible.slice(0, maxVisible - 2), normalizedOwner];
+    } else {
+      visible = defaultVisible;
+    }
+  } else {
+    visible = normalized;
+  }
 
   return (
     <div className="flex items-center gap-0.5 mt-1.5 flex-wrap max-sm:[&>span:nth-child(n+4)]:hidden" data-testid="flow-strip">
-      {visible.map((actor, i) => (
-        <span key={`${actor}-${i}`} className="flex items-center gap-0.5">
-          {i > 0 && (
-            <span className="text-text-disabled text-[10px]" aria-hidden="true">→</span>
-          )}
-          <span
-            title={getTooltip(actor)}
-            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-bg-overlay border border-border-subtle text-xs"
-            role="img"
-            aria-label={getTooltip(actor)}
-          >
-            {getEmoji(actor)}
+      {visible.map((actor, i) => {
+        const isOwner = normalizedOwner !== null && actor === normalizedOwner;
+        return (
+          <span key={`${actor}-${i}`} className="flex items-center gap-0.5">
+            {i > 0 && (
+              <span className="text-text-disabled text-[10px]" aria-hidden="true">→</span>
+            )}
+            <span
+              title={getTooltip(actor)}
+              className={`inline-flex items-center justify-center rounded-full text-xs ${
+                isOwner
+                  ? 'w-6 h-6 bg-bg-overlay border border-amber ring-2 ring-amber/40'
+                  : `w-5 h-5 bg-bg-overlay border border-border-subtle ${normalizedOwner ? 'opacity-60' : ''}`
+              }`}
+              role="img"
+              aria-label={getTooltip(actor)}
+            >
+              {getEmoji(actor)}
+            </span>
           </span>
-        </span>
-      ))}
+        );
+      })}
       {overflow > 0 && (
         <span className="flex items-center gap-0.5">
           <span className="text-text-disabled text-[10px]" aria-hidden="true">→</span>

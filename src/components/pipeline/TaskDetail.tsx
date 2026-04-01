@@ -5,6 +5,7 @@ import { fetchTaskEvents, fetchTaskDecisions, fetchTaskContract, transitionTask,
 import { EventTimeline } from './EventTimeline';
 import { CommentThread } from './CommentThread';
 import { CommentInput } from './CommentInput';
+import FlowStrip from './FlowStrip';
 
 interface TaskDetailProps {
   task: Task;
@@ -130,6 +131,16 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
           <div className="p-4 text-text-secondary text-sm">Loading...</div>
         ) : (
           <div className="p-4 space-y-6">
+            {/* Actor Flow */}
+            {(task.actors && task.actors.length > 0 || task.owner) && (
+              <section>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                  Actor Flow
+                </h3>
+                <FlowStrip actors={task.actors ?? []} currentOwner={task.owner} />
+              </section>
+            )}
+
             {/* Contract section */}
             {contract && (
               <section>

@@ -71,8 +71,8 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
         </p>
 
         {/* Flow Strip */}
-        {task.actors && task.actors.length > 0 && (
-          <FlowStrip actors={task.actors} />
+        {(task.actors && task.actors.length > 0 || task.owner) && (
+          <FlowStrip actors={task.actors ?? []} currentOwner={task.owner} />
         )}
 
         {/* Badges row */}

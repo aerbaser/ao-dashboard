@@ -30,7 +30,7 @@ describe('service status dual-mode detection', () => {
 
   it('detects system service as active when user scope returns inactive', async () => {
     // Simulate: --user show returns inactive, system show returns active
-    mockExecFile.mockImplementation((_cmd: string, args: string[], _opts: unknown, cb: Function) => {
+    mockExecFile.mockImplementation((_cmd: string, args: string[], _opts: unknown, cb: (...a: unknown[]) => void) => {
       const isUserScope = args.includes('--user')
       if (args.includes('show')) {
         if (isUserScope) {
@@ -53,7 +53,7 @@ describe('service status dual-mode detection', () => {
   })
 
   it('detects user service as active when user scope returns active', async () => {
-    mockExecFile.mockImplementation((_cmd: string, args: string[], _opts: unknown, cb: Function) => {
+    mockExecFile.mockImplementation((_cmd: string, args: string[], _opts: unknown, cb: (...a: unknown[]) => void) => {
       const isUserScope = args.includes('--user')
       if (args.includes('show')) {
         if (isUserScope) {
@@ -75,7 +75,7 @@ describe('service status dual-mode detection', () => {
   })
 
   it('reports inactive when neither scope has the service active', async () => {
-    mockExecFile.mockImplementation((_cmd: string, args: string[], _opts: unknown, cb: Function) => {
+    mockExecFile.mockImplementation((_cmd: string, args: string[], _opts: unknown, cb: (...a: unknown[]) => void) => {
       if (args.includes('show')) {
         cb(null, 'ActiveState=inactive\nSubState=dead\n', '')
       } else {

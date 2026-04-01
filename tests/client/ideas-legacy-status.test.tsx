@@ -95,4 +95,23 @@ describe('IdeaCard — legacy / unknown status resilience', () => {
     expect(screen.getByText('Draft')).toBeTruthy()
     expect(screen.getByText('Start Brainstorm')).toBeTruthy()
   })
+
+  it('renders full list with mixed valid + legacy statuses without crash', () => {
+    const ideas = [
+      makeIdea({ id: 'idea_001', title: 'Valid draft', status: 'draft' }),
+      makeIdea({ id: 'idea_002', title: 'Legacy reviewed', status: 'reviewed' as IdeaStatus }),
+      makeIdea({ id: 'idea_003', title: 'Valid brainstorming', status: 'brainstorming' }),
+      makeIdea({ id: 'idea_004', title: 'Null status', status: null as unknown as IdeaStatus }),
+      makeIdea({ id: 'idea_005', title: 'Valid archived', status: 'archived' }),
+      makeIdea({ id: 'idea_006', title: 'Unknown pending', status: 'pending' as IdeaStatus }),
+    ]
+    const props = defaultProps()
+
+    // Render all cards — no card should throw
+    for (const idea of ideas) {
+      const { unmount } = render(<IdeaCard idea={idea} {...props} />)
+      expect(screen.getByText(idea.title)).toBeTruthy()
+      unmount()
+    }
+  })
 })

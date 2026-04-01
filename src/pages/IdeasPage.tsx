@@ -1,10 +1,20 @@
 import { useState, useCallback } from 'react'
 import { usePolling } from '../hooks/usePolling'
 import { useToast } from '../hooks/useToast'
-import { fetchIdeas, createIdea, updateIdea, deleteIdea, createTask, approveIdea } from '../lib/api'
-import type { IdeaStatus } from '../lib/types'
+import {
+  fetchIdeas,
+  createIdea,
+  updateIdea,
+  deleteIdea,
+  createTask,
+  approveIdea,
+  fetchApprovalQueue,
+  submitIdeaApprovalDecision,
+} from '../lib/api'
+import type { ApprovalDecision, IdeaStatus } from '../lib/types'
 import IdeaCard from '../components/ideas/IdeaCard'
 import IdeaForm from '../components/ideas/IdeaForm'
+import ApprovalQueue from '../components/ideas/ApprovalQueue'
 import EmptyState from '../components/ui/EmptyState'
 
 const FILTER_TABS: { label: string; value: IdeaStatus | 'all' }[] = [
@@ -20,16 +30,37 @@ export default function IdeasPage() {
   const [activeTab, setActiveTab] = useState<IdeaStatus | 'all'>('all')
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submittingApprovalId, setSubmittingApprovalId] = useState<string | null>(null)
   const { push } = useToast()
 
-  const fetcher = useCallback(() => fetchIdeas(), [])
-  const { data: ideas, loading, refetch } = usePolling(fetcher, 5000)
+  const ideasFetcher = useCallback(() => fetchIdeas(), [])
+  const approvalFetcher = useCallback(() => fetchApprovalQueue(), [])
+  const { data: ideas, loading, refetch } = usePolling(ideasFetcher, 5000)
+  const {
+    data: approvalQueue,
+    loading: approvalLoading,
+    error: approvalError,
+    refetch: refetchApprovalQueue,
+  } = usePolling(approvalFetcher, 5000)
+
+  const approvalIds = new Set((approvalQueue || []).map((item) => item.id))
 
   const filtered = ideas
     ? activeTab === 'all'
-      ? ideas
-      : ideas.filter((i) => i.status === activeTab)
+      ? ideas.filter((i) => !approvalIds.has(i.id))
+      : ideas.filter((i) => i.status === activeTab && !approvalIds.has(i.id))
     : []
+
+  function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message
+    if (err && typeof err === 'object') {
+      const message = 'message' in err && typeof err.message === 'string' ? err.message : null
+      const error = 'error' in err && typeof err.error === 'string' ? err.error : null
+      const detail = 'detail' in err && typeof err.detail === 'string' ? err.detail : null
+      return [error, message, detail].filter(Boolean).join(': ') || 'Request failed'
+    }
+    return 'Request failed'
+  }
 
   const handleCreate = async (data: { title: string; body: string; tags: string[]; target_agent: string }) => {
     setSubmitting(true)
@@ -82,6 +113,30 @@ export default function IdeasPage() {
       await refetch()
     } catch (err) {
       push({ message: err instanceof Error ? err.message : 'Failed to archive', variant: 'error' })
+    }
+  }
+
+  const handleApprovalDecision = async (id: string, decision: ApprovalDecision) => {
+    setSubmittingApprovalId(id)
+    try {
+      const result = await submitIdeaApprovalDecision(id, decision)
+      const label = decision === 'yes' ? 'Yes' : decision[0].toUpperCase() + decision.slice(1)
+      push({
+        message: result.task_id
+          ? `Routed to task ${result.task_id}`
+          : `Decision saved: ${label}`,
+        variant: 'success',
+        action: result.task_id
+          ? { label: 'Open Pipeline', fn: () => { window.location.href = `/pipeline?task=${result.task_id}` } }
+          : undefined,
+      })
+      await Promise.all([refetchApprovalQueue(), refetch()])
+    } catch (err) {
+      const message = getErrorMessage(err)
+      await Promise.all([refetchApprovalQueue(), refetch()])
+      push({ message, variant: 'error' })
+    } finally {
+      setSubmittingApprovalId(null)
     }
   }
 
@@ -145,6 +200,14 @@ export default function IdeasPage() {
           )
         })}
       </div>
+
+      <ApprovalQueue
+        items={approvalQueue || []}
+        loading={approvalLoading}
+        error={approvalError}
+        submittingId={submittingApprovalId}
+        onDecision={handleApprovalDecision}
+      />
 
       {/* Ideas grid */}
       {loading && !ideas ? (

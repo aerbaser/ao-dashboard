@@ -15,6 +15,8 @@ const STATUS_LABELS: Record<IdeaStatus, string> = {
   approved: 'Approved',
   in_work: 'In Work',
   archived: 'Archived',
+  reviewed: 'Reviewed',
+  approval_needed: 'Approval Needed',
 }
 
 const STATUS_BADGE_CLASSES: Record<IdeaStatus, string> = {
@@ -24,6 +26,8 @@ const STATUS_BADGE_CLASSES: Record<IdeaStatus, string> = {
   approved: 'bg-accent-purple-subtle text-accent-purple',
   in_work: 'bg-amber-subtle text-amber',
   archived: 'bg-bg-overlay text-text-tertiary',
+  reviewed: 'bg-blue-subtle text-blue',
+  approval_needed: 'bg-amber-subtle text-amber',
 }
 
 const BORDER_CLASSES: Record<IdeaStatus, string> = {
@@ -33,6 +37,8 @@ const BORDER_CLASSES: Record<IdeaStatus, string> = {
   approved: 'border-l-idea-approved',
   in_work: 'border-l-idea-in-work',
   archived: 'border-l-idea-archived',
+  reviewed: 'border-l-idea-brainstorming',
+  approval_needed: 'border-l-idea-in-work',
 }
 
 function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }[] {
@@ -46,6 +52,10 @@ function getNextActions(status: IdeaStatus): { label: string; next: IdeaStatus }
     case 'approved':
       return []  // No manual "Start Work" — task creation handles this
     case 'in_work':
+      return []
+    case 'reviewed':
+      return []
+    case 'approval_needed':
       return []
     case 'archived':
       return [{ label: 'Restore', next: 'draft' }]

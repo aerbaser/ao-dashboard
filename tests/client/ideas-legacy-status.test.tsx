@@ -4,7 +4,7 @@ import IdeaCard from '../../src/components/ideas/IdeaCard'
 import type { Idea, IdeaStatus } from '../../src/lib/types'
 
 /**
- * Regression coverage for #148 — legacy ideas with status="reviewed"
+ * Regression coverage for #150 — legacy ideas with status="reviewed"
  * or null/missing status must not crash the UI path.
  */
 

@@ -102,12 +102,11 @@ router.get('/', async (_req, res) => {
 
       for (const issue of issues) {
         const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name)
-        // Only include issues labeled agent:archimedes (AO-managed work)
-        if (!labels.includes('agent:archimedes')) continue
+        const agentLabel = labels.find(l => l.startsWith('agent:'))
 
         const sessionKey = `${projectId}#${issue.number}`
         const session = sessionMap.get(sessionKey)
-        
+
         let status = 'backlog'
         let prNumber = null
         let ciBadge = null
@@ -118,7 +117,9 @@ router.get('/', async (_req, res) => {
           status = AO_STATUS_MAP[session.status] || session.status
           prNumber = session.pr?.number || session.prNumber || null
           ciBadge = session.ci || null
-        } else if (labels.includes('agent:backlog')) {
+        } else if (!agentLabel) {
+          status = 'needs_triage'
+        } else if (agentLabel === 'agent:backlog') {
           status = 'backlog'
         } else {
           status = 'queued' // labeled but not spawned yet
@@ -144,7 +145,7 @@ router.get('/', async (_req, res) => {
     }
 
     // Sort: in_progress first, then review, then queued, then backlog, then done
-    const ORDER = { in_progress: 0, ci_failed: 1, review: 2, changes_requested: 3, approved: 4, blocked: 5, queued: 6, backlog: 7, done: 8, failed: 9 }
+    const ORDER = { needs_triage: 0, in_progress: 1, ci_failed: 2, review: 3, changes_requested: 4, approved: 5, blocked: 6, queued: 7, backlog: 8, done: 9, failed: 10 }
     items.sort((a, b) => (ORDER[a.status] ?? 99) - (ORDER[b.status] ?? 99))
 
     res.json(items)

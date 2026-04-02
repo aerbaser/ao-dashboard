@@ -4,13 +4,24 @@ import { STATE_GROUP } from '../../src/lib/pipeline-colors'
 
 /**
  * Semantic color matrix — every pipeline state must belong to exactly one
- * of the four semantic groups defined in design-tokens.json.
+ * of the five semantic groups (early, active, completion, problem, verification).
  */
 
 const EXPECTED_GROUPS: Record<string, string[]> = {
-  early: ['INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING'],
-  active: ['SETUP', 'EXECUTION', 'AWAITING_OWNER', 'CI_PENDING'],
-  completion: ['REVIEW_PENDING', 'QUALITY_GATE', 'FINALIZING', 'DEPLOYING', 'OBSERVING', 'DONE'],
+  early: [
+    'IDEA_PENDING_APPROVAL', 'APPROVED', 'IN_SPEC',
+    'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING',
+  ],
+  active: [
+    'IN_BUILD', 'PR_READY', 'MERGE_READY',
+    'SETUP', 'EXECUTION', 'AWAITING_OWNER', 'CI_PENDING',
+    'REVIEW_PENDING', 'QUALITY_GATE', 'FINALIZING',
+  ],
+  verification: [
+    'MERGED_NOT_DEPLOYED', 'DEPLOYED_NOT_VERIFIED', 'LIVE_ACCEPTANCE',
+    'DEPLOYING', 'OBSERVING',
+  ],
+  completion: ['DONE'],
   problem: ['BLOCKED', 'FAILED', 'WAITING_USER', 'STUCK'],
 }
 
@@ -21,9 +32,9 @@ describe('Semantic color groups', () => {
     }
   })
 
-  it('uses exactly 4 groups: early, active, completion, problem', () => {
+  it('uses exactly 5 groups: early, active, completion, problem, verification', () => {
     const groups = new Set(Object.values(STATE_GROUP))
-    expect([...groups].sort()).toEqual(['active', 'completion', 'early', 'problem'])
+    expect([...groups].sort()).toEqual(['active', 'completion', 'early', 'problem', 'verification'])
   })
 
   it.each(Object.entries(EXPECTED_GROUPS))('%s group contains expected states', (group, states) => {
@@ -46,7 +57,13 @@ describe('Semantic color groups', () => {
     expect(STATE_GROUP.DONE).toBe('completion')
   })
 
-  it('all 19 states are covered (no orphans)', () => {
+  it('post-merge states are in the verification (indigo) group', () => {
+    expect(STATE_GROUP.MERGED_NOT_DEPLOYED).toBe('verification')
+    expect(STATE_GROUP.DEPLOYED_NOT_VERIFIED).toBe('verification')
+    expect(STATE_GROUP.LIVE_ACCEPTANCE).toBe('verification')
+  })
+
+  it('all pipeline states are covered (no orphans)', () => {
     const mappedStates = Object.keys(STATE_GROUP).sort()
     const allStates = [...PIPELINE_STATES].sort()
     expect(mappedStates).toEqual(allStates)

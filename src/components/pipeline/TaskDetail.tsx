@@ -145,6 +145,63 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
               </section>
             )}
 
+            {/* Proof Status — shown when proof metadata exists */}
+            {task.proof && (
+              <section data-testid="proof-section">
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                  Proof Status
+                </h3>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-tertiary">Required</span>
+                    <span className="font-mono text-text-primary">{task.proof.required ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-tertiary">Status</span>
+                    <span className={`font-mono ${
+                      task.proof.status === 'pass' ? 'text-emerald' :
+                      task.proof.status === 'fail' ? 'text-red' :
+                      'text-text-primary'
+                    }`}>
+                      {task.proof.status}
+                    </span>
+                  </div>
+                  {task.proof.evidence && (
+                    <div>
+                      <span className="text-text-tertiary">Evidence</span>
+                      <p className="font-mono text-xs text-text-secondary mt-0.5">{task.proof.evidence}</p>
+                    </div>
+                  )}
+                  {task.proof.reference && (
+                    <div>
+                      <span className="text-text-tertiary">Reference</span>
+                      <p className="font-mono text-xs text-text-secondary mt-0.5">{task.proof.reference}</p>
+                    </div>
+                  )}
+                  {task.proof.checked_at && (
+                    <div className="flex justify-between">
+                      <span className="text-text-tertiary">Checked at</span>
+                      <span className="font-mono text-xs text-text-tertiary">
+                        {new Date(task.proof.checked_at).toLocaleString('en-US', { hour12: false })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Reopen Reason — shown when task was reopened from false DONE */}
+            {task.reopen_reason && (
+              <section data-testid="reopen-section">
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                  Reopened
+                </h3>
+                <div className="p-2 rounded-md bg-red-subtle border border-red text-red text-xs font-mono">
+                  {task.reopen_reason}
+                </div>
+              </section>
+            )}
+
             {/* Contract section */}
             {contract && (
               <section>

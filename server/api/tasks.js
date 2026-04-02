@@ -13,11 +13,12 @@ const GH_BIN = '/home/aiadmin/.local/bin/gh'
 const AO_URL = 'http://127.0.0.1:3100/api/sessions'
 
 const AO_STATUS_MAP = {
-  spawning: 'EXECUTION', ready: 'EXECUTION', working: 'EXECUTION',
-  pr_open: 'REVIEW_PENDING', ci_failed: 'CI_PENDING',
-  review_pending: 'REVIEW_PENDING', changes_requested: 'REVIEW_PENDING',
-  approved: 'QUALITY_GATE', mergeable: 'QUALITY_GATE',
-  merged: 'DONE', needs_input: 'AWAITING_OWNER',
+  spawning: 'IN_BUILD', ready: 'IN_BUILD', working: 'IN_BUILD',
+  pr_open: 'PR_READY', ci_failed: 'IN_BUILD',
+  review_pending: 'PR_READY', changes_requested: 'PR_READY',
+  approved: 'MERGE_READY', mergeable: 'MERGE_READY',
+  merged: 'MERGED_NOT_DEPLOYED', needs_input: 'AWAITING_OWNER',
+  deployed: 'DEPLOYED_NOT_VERIFIED', verified: 'LIVE_ACCEPTANCE',
   stuck: 'STUCK', errored: 'FAILED', killed: 'FAILED', done: 'DONE',
 }
 
@@ -62,24 +63,24 @@ async function getGitHubTasks() {
       const agentLabel = labels.find(l => l.startsWith('agent:'))
       const session = sessionMap.get(`${pid}#${issue.number}`)
 
-      let state = 'PLANNING'
+      let state = 'IDEA_PENDING_APPROVAL'
       let owner = 'platon'
 
       if (issue.state === 'CLOSED' || issue.closedAt) {
         state = 'DONE'
       } else if (session) {
-        state = AO_STATUS_MAP[session.status] || 'EXECUTION'
+        state = AO_STATUS_MAP[session.status] || 'IN_BUILD'
         owner = 'archimedes'
       } else if (!agentLabel) {
-        state = 'INTAKE'
+        state = 'IDEA_PENDING_APPROVAL'
         owner = 'unrouted'
       } else if (agentLabel === 'agent:backlog') {
-        state = 'PLANNING'
+        state = 'APPROVED'
       } else if (agentLabel === 'agent:archimedes') {
-        state = 'SETUP'
+        state = 'IN_SPEC'
       } else {
         // Other agent labels (agent:hephaestus, agent:platon, etc.)
-        state = 'INTAKE'
+        state = 'IDEA_PENDING_APPROVAL'
         owner = agentLabel.replace('agent:', '')
       }
 
@@ -305,6 +306,18 @@ router.post('/', async (req, res) => {
 // ─── State machine — valid transitions ───────────────────────────────────────
 
 const STATE_TRANSITIONS = {
+  // Autonomy v1 canonical flow
+  IDEA_PENDING_APPROVAL: ['APPROVED', 'BLOCKED'],
+  APPROVED:              ['IN_SPEC', 'BLOCKED'],
+  IN_SPEC:               ['IN_BUILD', 'BLOCKED'],
+  IN_BUILD:              ['PR_READY', 'AWAITING_OWNER', 'BLOCKED'],
+  PR_READY:              ['MERGE_READY', 'IN_BUILD'],
+  MERGE_READY:           ['MERGED_NOT_DEPLOYED', 'IN_BUILD'],
+  MERGED_NOT_DEPLOYED:   ['DEPLOYED_NOT_VERIFIED', 'FAILED'],
+  DEPLOYED_NOT_VERIFIED: ['LIVE_ACCEPTANCE', 'FAILED'],
+  LIVE_ACCEPTANCE:       ['DONE', 'IN_SPEC'],
+  DONE:                  [],
+  // Legacy flow
   INTAKE:          ['CONTEXT', 'BLOCKED'],
   CONTEXT:         ['RESEARCH', 'BLOCKED'],
   RESEARCH:        ['DESIGN', 'BLOCKED'],
@@ -312,18 +325,18 @@ const STATE_TRANSITIONS = {
   PLANNING:        ['SETUP', 'BLOCKED'],
   SETUP:           ['EXECUTION', 'BLOCKED'],
   EXECUTION:       ['REVIEW_PENDING', 'AWAITING_OWNER', 'BLOCKED'],
-  AWAITING_OWNER:  ['EXECUTION', 'BLOCKED'],
+  AWAITING_OWNER:  ['EXECUTION', 'IN_BUILD', 'BLOCKED'],
   REVIEW_PENDING:  ['CI_PENDING', 'EXECUTION'],
   CI_PENDING:      ['QUALITY_GATE', 'FAILED'],
   QUALITY_GATE:    ['FINALIZING', 'EXECUTION'],
-  FINALIZING:      ['DEPLOYING', 'DONE'],
-  DEPLOYING:       ['OBSERVING', 'FAILED'],
-  OBSERVING:       ['DONE', 'FAILED'],
-  DONE:            [],
-  BLOCKED:         ['EXECUTION'],
-  FAILED:          ['EXECUTION'],
-  STUCK:           ['EXECUTION'],
-  WAITING_USER:    ['EXECUTION'],
+  FINALIZING:      ['DEPLOYING', 'DONE', 'MERGED_NOT_DEPLOYED'],
+  DEPLOYING:       ['OBSERVING', 'FAILED', 'DEPLOYED_NOT_VERIFIED'],
+  OBSERVING:       ['DONE', 'FAILED', 'LIVE_ACCEPTANCE'],
+  // Side states
+  BLOCKED:         ['EXECUTION', 'IN_BUILD'],
+  FAILED:          ['EXECUTION', 'IN_BUILD'],
+  STUCK:           ['EXECUTION', 'IN_BUILD'],
+  WAITING_USER:    ['EXECUTION', 'IN_BUILD'],
 }
 
 /** Read current state from task status.json */

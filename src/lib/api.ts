@@ -71,6 +71,8 @@ interface TaskListResponse {
     updated_at?: string;
     last_material_update?: string;
     next_action?: string | null;
+    proof?: { required?: boolean; status?: string; evidence?: string; reference?: string; checked_at?: string } | null;
+    reopen_reason?: string | null;
     [key: string]: unknown;
   };
   actors?: string[];
@@ -86,6 +88,7 @@ interface TaskDetailResponse extends TaskListResponse {
 // ─── Transform helpers ────────────────────────────────────────────────────────
 
 const TERMINAL = ['DONE', 'FAILED', 'CANCELLED', 'SUPERSEDED'];
+const VERIFICATION = ['MERGED_NOT_DEPLOYED', 'DEPLOYED_NOT_VERIFIED', 'LIVE_ACCEPTANCE'];
 
 function minutesAgo(iso?: string | null): number | null {
   if (!iso) return null;
@@ -103,9 +106,23 @@ function deriveGoal(c: TaskContract | undefined): string | null {
 function toTask(item: TaskListResponse): Task {
   const s = item.status;
   const c = item.contract;
+  const rawProof = s.proof;
+  const proof = rawProof
+    ? {
+        required: rawProof.required ?? true,
+        status: (rawProof.status ?? 'pending') as 'pending' | 'pass' | 'fail' | 'not_applicable',
+        evidence: rawProof.evidence ?? null,
+        reference: rawProof.reference ?? null,
+        checked_at: rawProof.checked_at ?? null,
+      }
+    : null;
+
+  // Post-merge verification states are non-terminal even though they come after merge
+  const isTerminal = TERMINAL.includes(s.state) && !VERIFICATION.includes(s.state);
+
   return {
     id: item.task_id,
-    state: (s.state || 'INTAKE') as PipelineState,
+    state: (s.state || 'IDEA_PENDING_APPROVAL') as PipelineState,
     owner: s.current_owner || '',
     route: c?.route || s.current_route || '?',
     title: (c?.title || '').slice(0, 80),
@@ -113,7 +130,7 @@ function toTask(item: TaskListResponse): Task {
     ttl: null,
     blockers: (s.blockers || []).length,
     retries: s.retries || 0,
-    terminal: TERMINAL.includes(s.state),
+    terminal: isTerminal,
     hasQuality: false,
     hasOutcome: false,
     hasRelease: false,
@@ -125,6 +142,8 @@ function toTask(item: TaskListResponse): Task {
     source_ref: c?.source_ref,
     next_action: s.next_action ?? null,
     goal: deriveGoal(c),
+    proof,
+    reopen_reason: s.reopen_reason ?? null,
   };
 }
 

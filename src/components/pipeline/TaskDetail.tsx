@@ -163,7 +163,10 @@ export function TaskDetail({ task, onClose, onTransition }: TaskDetailProps) {
                       task.proof.status === 'fail' ? 'text-red' :
                       'text-text-primary'
                     }`}>
-                      {task.proof.status}
+                      {task.proof.status === 'pass' ? 'Passed' :
+                       task.proof.status === 'fail' ? 'Failed' :
+                       task.proof.status === 'not_applicable' ? 'N/A' :
+                       'Pending'}
                     </span>
                   </div>
                   {task.proof.evidence && (

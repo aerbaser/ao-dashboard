@@ -117,7 +117,8 @@ function toTask(item: TaskListResponse): Task {
       }
     : null;
 
-  // Post-merge verification states are non-terminal even though they come after merge
+  // Guard: verification states must never be classified as terminal,
+  // even though they come after merge in the pipeline flow
   const isTerminal = TERMINAL.includes(s.state) && !VERIFICATION.includes(s.state);
 
   return {

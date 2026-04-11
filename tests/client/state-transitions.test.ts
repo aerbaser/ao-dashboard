@@ -25,39 +25,53 @@ describe('STATE_TRANSITIONS graph', () => {
     expect(getValidTransitions('DONE')).toEqual([])
   })
 
-  it('EXECUTION can transition to REVIEW_PENDING, AWAITING_OWNER, BLOCKED', () => {
-    expect(getValidTransitions('EXECUTION')).toEqual([
-      'REVIEW_PENDING', 'AWAITING_OWNER', 'BLOCKED',
-    ])
-  })
-
-  it('BLOCKED can only return to EXECUTION', () => {
-    expect(getValidTransitions('BLOCKED')).toEqual(['EXECUTION'])
-  })
-
-  it('FAILED can only return to EXECUTION', () => {
-    expect(getValidTransitions('FAILED')).toEqual(['EXECUTION'])
-  })
-
   it('no state transitions to itself', () => {
     for (const [state, targets] of Object.entries(STATE_TRANSITIONS)) {
       expect(targets).not.toContain(state)
     }
   })
 
+  // Autonomy v1 canonical flow tests
+  it('IDEA_PENDING_APPROVAL can go to APPROVED or BLOCKED', () => {
+    expect(getValidTransitions('IDEA_PENDING_APPROVAL')).toEqual(['APPROVED', 'BLOCKED'])
+  })
+
+  it('IN_BUILD can go to PR_READY, AWAITING_OWNER, or BLOCKED', () => {
+    expect(getValidTransitions('IN_BUILD')).toEqual(['PR_READY', 'AWAITING_OWNER', 'BLOCKED'])
+  })
+
+  it('MERGED_NOT_DEPLOYED can go to DEPLOYED_NOT_VERIFIED or FAILED', () => {
+    expect(getValidTransitions('MERGED_NOT_DEPLOYED')).toEqual(['DEPLOYED_NOT_VERIFIED', 'FAILED'])
+  })
+
+  it('LIVE_ACCEPTANCE can go to DONE or reopen to IN_SPEC', () => {
+    expect(getValidTransitions('LIVE_ACCEPTANCE')).toEqual(['DONE', 'IN_SPEC'])
+  })
+
+  it('BLOCKED can return to EXECUTION or IN_BUILD', () => {
+    expect(getValidTransitions('BLOCKED')).toEqual(['EXECUTION', 'IN_BUILD'])
+  })
+
+  // Legacy flow tests
   it('INTAKE can go to CONTEXT or BLOCKED', () => {
     expect(getValidTransitions('INTAKE')).toEqual(['CONTEXT', 'BLOCKED'])
   })
 
-  it('FINALIZING can go to DEPLOYING or DONE', () => {
-    expect(getValidTransitions('FINALIZING')).toEqual(['DEPLOYING', 'DONE'])
+  it('EXECUTION can transition to REVIEW_PENDING, AWAITING_OWNER, BLOCKED', () => {
+    expect(getValidTransitions('EXECUTION')).toEqual([
+      'REVIEW_PENDING', 'AWAITING_OWNER', 'BLOCKED',
+    ])
+  })
+
+  it('FINALIZING can bridge to autonomy via MERGED_NOT_DEPLOYED', () => {
+    const targets = getValidTransitions('FINALIZING')
+    expect(targets).toContain('MERGED_NOT_DEPLOYED')
   })
 
   it('each main-flow state has at least one forward transition (except DONE)', () => {
     const mainFlow: PipelineState[] = [
-      'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
-      'EXECUTION', 'AWAITING_OWNER', 'REVIEW_PENDING', 'CI_PENDING',
-      'QUALITY_GATE', 'FINALIZING', 'DEPLOYING', 'OBSERVING',
+      'IDEA_PENDING_APPROVAL', 'APPROVED', 'IN_SPEC', 'IN_BUILD', 'PR_READY',
+      'MERGE_READY', 'MERGED_NOT_DEPLOYED', 'DEPLOYED_NOT_VERIFIED', 'LIVE_ACCEPTANCE',
     ]
     for (const state of mainFlow) {
       expect(getValidTransitions(state).length).toBeGreaterThan(0)

@@ -65,10 +65,11 @@ export default {
           archived:       '#2A2927',
         },
         pipeline: {
-          'state-early':      '#60A5FA',
-          'state-active':     '#F5A623',
-          'state-completion': '#22C55E',
-          'state-problem':    '#EF4444',
+          'state-early':        '#60A5FA',
+          'state-active':       '#F5A623',
+          'state-completion':   '#22C55E',
+          'state-problem':      '#EF4444',
+          'state-verification': '#818CF8',
         },
       },
       fontFamily: {

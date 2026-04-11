@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import type { Task, PipelineState, TransitionError } from '../../lib/types';
-import { MAIN_FLOW_STATES, SIDE_STATES } from '../../lib/types';
+import { MAIN_FLOW_STATES, LEGACY_FLOW_STATES, SIDE_STATES } from '../../lib/types';
 import { transitionTask } from '../../lib/api';
 import { STATE_COLORS } from '../../lib/pipeline-colors';
 import { TaskCard } from './TaskCard';
@@ -213,7 +213,7 @@ export function KanbanBoard({ tasks, onCardClick, onRefresh, loading, hideEmpty 
     [tasks, onRefresh, push]
   );
 
-  const allStates: PipelineState[] = [...MAIN_FLOW_STATES, ...SIDE_STATES];
+  const allStates: PipelineState[] = [...MAIN_FLOW_STATES, ...LEGACY_FLOW_STATES, ...SIDE_STATES];
   const visibleStates = hideEmpty
     ? allStates.filter((s) => tasksByState(s).length > 0)
     : allStates;

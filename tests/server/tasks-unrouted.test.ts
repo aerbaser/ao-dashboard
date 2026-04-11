@@ -125,42 +125,42 @@ describe('tasks API — unrouted issue visibility (#154)', () => {
     expect(ghTasks).toHaveLength(6)
   })
 
-  it('classifies agent:archimedes issue as SETUP with platon owner', async () => {
+  it('classifies agent:archimedes issue as IN_SPEC with platon owner', async () => {
     const res = await request(app).get('/api/tasks')
     const task = (res.body as TaskItem[]).find(t => t.task_id === 'gh-ao-dashboard-200')
     expect(task).toBeDefined()
-    expect(task!.status.state).toBe('SETUP')
+    expect(task!.status.state).toBe('IN_SPEC')
   })
 
-  it('classifies unlabeled open issue as INTAKE with unrouted owner', async () => {
+  it('classifies unlabeled open issue as IDEA_PENDING_APPROVAL with unrouted owner', async () => {
     const res = await request(app).get('/api/tasks')
     const task = (res.body as TaskItem[]).find(t => t.task_id === 'gh-ao-dashboard-201')
     expect(task).toBeDefined()
-    expect(task!.status.state).toBe('INTAKE')
+    expect(task!.status.state).toBe('IDEA_PENDING_APPROVAL')
     expect(task!.status.current_owner).toBe('unrouted')
   })
 
-  it('classifies issue with no labels as INTAKE with unrouted owner', async () => {
+  it('classifies issue with no labels as IDEA_PENDING_APPROVAL with unrouted owner', async () => {
     const res = await request(app).get('/api/tasks')
     const task = (res.body as TaskItem[]).find(t => t.task_id === 'gh-ao-dashboard-205')
     expect(task).toBeDefined()
-    expect(task!.status.state).toBe('INTAKE')
+    expect(task!.status.state).toBe('IDEA_PENDING_APPROVAL')
     expect(task!.status.current_owner).toBe('unrouted')
   })
 
-  it('classifies other agent label as INTAKE with that agent as owner', async () => {
+  it('classifies other agent label as IDEA_PENDING_APPROVAL with that agent as owner', async () => {
     const res = await request(app).get('/api/tasks')
     const task = (res.body as TaskItem[]).find(t => t.task_id === 'gh-ao-dashboard-202')
     expect(task).toBeDefined()
-    expect(task!.status.state).toBe('INTAKE')
+    expect(task!.status.state).toBe('IDEA_PENDING_APPROVAL')
     expect(task!.status.current_owner).toBe('hephaestus')
   })
 
-  it('classifies agent:backlog issue as PLANNING', async () => {
+  it('classifies agent:backlog issue as APPROVED', async () => {
     const res = await request(app).get('/api/tasks')
     const task = (res.body as TaskItem[]).find(t => t.task_id === 'gh-ao-dashboard-203')
     expect(task).toBeDefined()
-    expect(task!.status.state).toBe('PLANNING')
+    expect(task!.status.state).toBe('APPROVED')
   })
 
   it('classifies closed issue as DONE regardless of labels', async () => {

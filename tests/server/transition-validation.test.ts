@@ -90,18 +90,74 @@ describe('POST /api/tasks/:id/transition — state machine validation', () => {
     expect(res.body.detail).toContain('INTAKE')
   })
 
-  it('rejects transition from INTAKE to EXECUTION (must go through CONTEXT)', async () => {
-    mockStatusState['tsk_test'] = 'INTAKE'
+  it('allows valid transition (IDEA_PENDING_APPROVAL → APPROVED)', async () => {
+    mockStatusState['tsk_test'] = 'IDEA_PENDING_APPROVAL'
 
     const res = await request(app)
       .post('/api/tasks/tsk_test/transition')
-      .send({ state: 'EXECUTION' })
+      .send({ state: 'APPROVED' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
+  })
+
+  it('allows valid transition (IN_BUILD → PR_READY)', async () => {
+    mockStatusState['tsk_test'] = 'IN_BUILD'
+
+    const res = await request(app)
+      .post('/api/tasks/tsk_test/transition')
+      .send({ state: 'PR_READY' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
+  })
+
+  it('allows MERGED_NOT_DEPLOYED → DEPLOYED_NOT_VERIFIED', async () => {
+    mockStatusState['tsk_test'] = 'MERGED_NOT_DEPLOYED'
+
+    const res = await request(app)
+      .post('/api/tasks/tsk_test/transition')
+      .send({ state: 'DEPLOYED_NOT_VERIFIED' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
+  })
+
+  it('allows LIVE_ACCEPTANCE → DONE (proof pass)', async () => {
+    mockStatusState['tsk_test'] = 'LIVE_ACCEPTANCE'
+
+    const res = await request(app)
+      .post('/api/tasks/tsk_test/transition')
+      .send({ state: 'DONE' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
+  })
+
+  it('allows LIVE_ACCEPTANCE → IN_SPEC (reopen on proof fail)', async () => {
+    mockStatusState['tsk_test'] = 'LIVE_ACCEPTANCE'
+
+    const res = await request(app)
+      .post('/api/tasks/tsk_test/transition')
+      .send({ state: 'IN_SPEC' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
+  })
+
+  it('rejects MERGED_NOT_DEPLOYED → DONE (must go through LIVE_ACCEPTANCE)', async () => {
+    mockStatusState['tsk_test'] = 'MERGED_NOT_DEPLOYED'
+
+    const res = await request(app)
+      .post('/api/tasks/tsk_test/transition')
+      .send({ state: 'DONE' })
 
     expect(res.status).toBe(422)
     expect(res.body.error).toBe('INVALID_TRANSITION')
   })
 
-  it('allows valid transition (INTAKE → CONTEXT)', async () => {
+  // Legacy flow tests
+  it('allows valid legacy transition (INTAKE → CONTEXT)', async () => {
     mockStatusState['tsk_test'] = 'INTAKE'
 
     const res = await request(app)
@@ -112,7 +168,7 @@ describe('POST /api/tasks/:id/transition — state machine validation', () => {
     expect(res.body.ok).toBe(true)
   })
 
-  it('allows valid transition (EXECUTION → BLOCKED)', async () => {
+  it('allows valid legacy transition (EXECUTION → BLOCKED)', async () => {
     mockStatusState['tsk_test'] = 'EXECUTION'
 
     const res = await request(app)
@@ -135,17 +191,15 @@ describe('POST /api/tasks/:id/transition — state machine validation', () => {
   })
 
   it('skips validation when task has no status.json (e.g. GitHub tasks)', async () => {
-    // tsk_unknown not in mockStatusState — existsSync returns false
-
     const res = await request(app)
       .post('/api/tasks/tsk_unknown/transition')
-      .send({ state: 'EXECUTION' })
+      .send({ state: 'IN_BUILD' })
 
     expect(res.status).toBe(200)
     expect(res.body.ok).toBe(true)
   })
 
-  it('rejects BLOCKED → DONE (must go through EXECUTION)', async () => {
+  it('rejects BLOCKED → DONE (must go through EXECUTION or IN_BUILD)', async () => {
     mockStatusState['tsk_test'] = 'BLOCKED'
 
     const res = await request(app)
@@ -154,6 +208,17 @@ describe('POST /api/tasks/:id/transition — state machine validation', () => {
 
     expect(res.status).toBe(422)
     expect(res.body.error).toBe('INVALID_TRANSITION')
-    expect(res.body.detail).toContain('Valid transitions: EXECUTION')
+    expect(res.body.detail).toContain('Valid transitions: EXECUTION, IN_BUILD')
+  })
+
+  it('allows legacy bridge: FINALIZING → MERGED_NOT_DEPLOYED', async () => {
+    mockStatusState['tsk_test'] = 'FINALIZING'
+
+    const res = await request(app)
+      .post('/api/tasks/tsk_test/transition')
+      .send({ state: 'MERGED_NOT_DEPLOYED' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
   })
 })

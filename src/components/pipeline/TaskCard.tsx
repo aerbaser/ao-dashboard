@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, TransitionError } from '../../lib/types';
+import { VERIFICATION_STATES } from '../../lib/types';
 import CopyButton from '../ui/CopyButton';
 import FlowStrip from './FlowStrip';
 import { ageColor } from '../../lib/age-color-css';
@@ -155,6 +156,36 @@ export function TaskCard({ task, onClick, error }: TaskCardProps) {
             )}
           </div>
         </div>
+
+        {/* Proof status badge — shown for verification and DONE states */}
+        {(VERIFICATION_STATES.includes(task.state) || task.state === 'DONE') && task.proof && (
+          <div className="flex items-center gap-1.5 mt-2" data-testid="proof-badge">
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-mono ${
+              task.proof.status === 'pass' ? 'bg-emerald-subtle text-emerald' :
+              task.proof.status === 'fail' ? 'bg-red-subtle text-red' :
+              'bg-indigo-subtle text-indigo'
+            }`}>
+              {task.proof.status === 'pass' ? '✓ Proof passed' :
+               task.proof.status === 'fail' ? '✗ Proof failed' :
+               task.proof.status === 'not_applicable' ? '— N/A' :
+               '⏳ Proof pending'}
+            </span>
+          </div>
+        )}
+
+        {/* Verification warning — post-merge but not yet proven */}
+        {VERIFICATION_STATES.includes(task.state) && (
+          <div className="mt-1 px-2 py-1 rounded-sm bg-indigo-subtle text-indigo text-xs font-medium" data-testid="verification-badge">
+            Not yet verified
+          </div>
+        )}
+
+        {/* Reopen reason — task was reopened from false DONE */}
+        {task.reopen_reason && (
+          <div className="mt-1 px-2 py-1 rounded-sm bg-red-subtle text-red text-xs font-mono truncate" data-testid="reopen-reason" title={task.reopen_reason}>
+            Reopened: {task.reopen_reason}
+          </div>
+        )}
 
         {/* Last agent message preview — AWAITING_OWNER only */}
         {task.state === 'AWAITING_OWNER' && task.lastAgentMessage && (

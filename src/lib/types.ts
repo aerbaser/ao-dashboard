@@ -18,18 +18,31 @@ export interface GlobalStatus {
 }
 
 export const PIPELINE_STATES = [
+  // Autonomy v1 canonical states
+  'IDEA_PENDING_APPROVAL', 'APPROVED', 'IN_SPEC', 'IN_BUILD', 'PR_READY',
+  'MERGE_READY', 'MERGED_NOT_DEPLOYED', 'DEPLOYED_NOT_VERIFIED',
+  'LIVE_ACCEPTANCE', 'DONE',
+  // Legacy main-flow states (kept for backward compat)
   'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
   'EXECUTION', 'AWAITING_OWNER', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
-  'FINALIZING', 'DEPLOYING', 'OBSERVING', 'DONE',
+  'FINALIZING', 'DEPLOYING', 'OBSERVING',
+  // Side states
   'BLOCKED', 'FAILED', 'WAITING_USER', 'STUCK',
 ] as const;
 
 export type PipelineState = (typeof PIPELINE_STATES)[number];
 
 export const MAIN_FLOW_STATES: PipelineState[] = [
+  'IDEA_PENDING_APPROVAL', 'APPROVED', 'IN_SPEC', 'IN_BUILD', 'PR_READY',
+  'MERGE_READY', 'MERGED_NOT_DEPLOYED', 'DEPLOYED_NOT_VERIFIED',
+  'LIVE_ACCEPTANCE', 'DONE',
+];
+
+/** Legacy main-flow states kept for backward compatibility with older tasks. */
+export const LEGACY_FLOW_STATES: PipelineState[] = [
   'INTAKE', 'CONTEXT', 'RESEARCH', 'DESIGN', 'PLANNING', 'SETUP',
   'EXECUTION', 'AWAITING_OWNER', 'REVIEW_PENDING', 'CI_PENDING', 'QUALITY_GATE',
-  'FINALIZING', 'DEPLOYING', 'OBSERVING', 'DONE',
+  'FINALIZING', 'DEPLOYING', 'OBSERVING',
 ];
 
 export const SIDE_STATES: PipelineState[] = [
@@ -38,12 +51,30 @@ export const SIDE_STATES: PipelineState[] = [
 
 export const ERROR_STATES: PipelineState[] = ['BLOCKED', 'FAILED', 'STUCK'];
 export const TERMINAL_STATES: PipelineState[] = ['DONE', 'FAILED'];
-export const ACTIVE_STATES: PipelineState[] = MAIN_FLOW_STATES.filter(
-  (s) => s !== 'DONE'
-);
+
+/** Post-merge states that are NOT terminal — work is not yet proven. */
+export const VERIFICATION_STATES: PipelineState[] = [
+  'MERGED_NOT_DEPLOYED', 'DEPLOYED_NOT_VERIFIED', 'LIVE_ACCEPTANCE',
+];
+
+export const ACTIVE_STATES: PipelineState[] = [
+  ...MAIN_FLOW_STATES, ...LEGACY_FLOW_STATES,
+].filter((s) => s !== 'DONE');
 
 /** Valid state transitions — each state maps to the states it can transition to. */
 export const STATE_TRANSITIONS: Record<PipelineState, readonly PipelineState[]> = {
+  // Autonomy v1 canonical flow
+  IDEA_PENDING_APPROVAL: ['APPROVED', 'BLOCKED'],
+  APPROVED:              ['IN_SPEC', 'BLOCKED'],
+  IN_SPEC:               ['IN_BUILD', 'BLOCKED'],
+  IN_BUILD:              ['PR_READY', 'AWAITING_OWNER', 'BLOCKED'],
+  PR_READY:              ['MERGE_READY', 'IN_BUILD'],
+  MERGE_READY:           ['MERGED_NOT_DEPLOYED', 'IN_BUILD'],
+  MERGED_NOT_DEPLOYED:   ['DEPLOYED_NOT_VERIFIED', 'FAILED'],
+  DEPLOYED_NOT_VERIFIED: ['LIVE_ACCEPTANCE', 'FAILED'],
+  LIVE_ACCEPTANCE:       ['DONE', 'IN_SPEC'],
+  DONE:                  [],
+  // Legacy flow transitions
   INTAKE:          ['CONTEXT', 'BLOCKED'],
   CONTEXT:         ['RESEARCH', 'BLOCKED'],
   RESEARCH:        ['DESIGN', 'BLOCKED'],
@@ -51,18 +82,18 @@ export const STATE_TRANSITIONS: Record<PipelineState, readonly PipelineState[]> 
   PLANNING:        ['SETUP', 'BLOCKED'],
   SETUP:           ['EXECUTION', 'BLOCKED'],
   EXECUTION:       ['REVIEW_PENDING', 'AWAITING_OWNER', 'BLOCKED'],
-  AWAITING_OWNER:  ['EXECUTION', 'BLOCKED'],
+  AWAITING_OWNER:  ['EXECUTION', 'IN_BUILD', 'BLOCKED'],
   REVIEW_PENDING:  ['CI_PENDING', 'EXECUTION'],
   CI_PENDING:      ['QUALITY_GATE', 'FAILED'],
   QUALITY_GATE:    ['FINALIZING', 'EXECUTION'],
-  FINALIZING:      ['DEPLOYING', 'DONE'],
-  DEPLOYING:       ['OBSERVING', 'FAILED'],
-  OBSERVING:       ['DONE', 'FAILED'],
-  DONE:            [],
-  BLOCKED:         ['EXECUTION'],
-  FAILED:          ['EXECUTION'],
-  STUCK:           ['EXECUTION'],
-  WAITING_USER:    ['EXECUTION'],
+  FINALIZING:      ['DEPLOYING', 'DONE', 'MERGED_NOT_DEPLOYED'],
+  DEPLOYING:       ['OBSERVING', 'FAILED', 'DEPLOYED_NOT_VERIFIED'],
+  OBSERVING:       ['DONE', 'FAILED', 'LIVE_ACCEPTANCE'],
+  // Side states
+  BLOCKED:         ['EXECUTION', 'IN_BUILD'],
+  FAILED:          ['EXECUTION', 'IN_BUILD'],
+  STUCK:           ['EXECUTION', 'IN_BUILD'],
+  WAITING_USER:    ['EXECUTION', 'IN_BUILD'],
 };
 
 /** Get valid next states for a given state, returns empty array for unknown states. */
@@ -135,6 +166,15 @@ export interface TaskContract {
   created_at: string;
 }
 
+/** Proof metadata for live-acceptance verification. */
+export interface ProofInfo {
+  required: boolean;
+  status: 'pending' | 'pass' | 'fail' | 'not_applicable';
+  evidence?: string | null;
+  reference?: string | null;
+  checked_at?: string | null;
+}
+
 export interface Task {
   id: string;
   state: PipelineState;
@@ -160,6 +200,10 @@ export interface Task {
   events?: TaskEvent[];
   decisions?: TaskDecision[];
   artifacts?: string[];
+  /** Proof status for live-acceptance verification. */
+  proof?: ProofInfo | null;
+  /** Reason for reopening from a false DONE. */
+  reopen_reason?: string | null;
 }
 
 export interface TransitionError {

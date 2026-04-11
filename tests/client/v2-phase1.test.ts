@@ -1,20 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import {
   PIPELINE_STATES,
-  MAIN_FLOW_STATES,
+  LEGACY_FLOW_STATES,
   type GlobalStatus,
 } from '../../src/lib/types'
 
 describe('v2 Phase 1 — AWAITING_OWNER position', () => {
-  it('AWAITING_OWNER sits between EXECUTION and REVIEW_PENDING in PIPELINE_STATES', () => {
-    const idx = PIPELINE_STATES.indexOf('AWAITING_OWNER')
+  it('AWAITING_OWNER sits between EXECUTION and REVIEW_PENDING in legacy flow', () => {
+    const idx = LEGACY_FLOW_STATES.indexOf('AWAITING_OWNER')
     expect(idx).toBeGreaterThan(-1)
-    expect(PIPELINE_STATES[idx - 1]).toBe('EXECUTION')
-    expect(PIPELINE_STATES[idx + 1]).toBe('REVIEW_PENDING')
+    expect(LEGACY_FLOW_STATES[idx - 1]).toBe('EXECUTION')
+    expect(LEGACY_FLOW_STATES[idx + 1]).toBe('REVIEW_PENDING')
   })
 
-  it('AWAITING_OWNER is present in MAIN_FLOW_STATES', () => {
-    expect(MAIN_FLOW_STATES).toContain('AWAITING_OWNER')
+  it('AWAITING_OWNER is present in PIPELINE_STATES', () => {
+    expect(PIPELINE_STATES).toContain('AWAITING_OWNER')
   })
 
   it('GlobalStatus includes awaiting_owner_count and awaiting_owner_overdue', () => {
@@ -33,6 +33,7 @@ describe('v2 Phase 1 — AWAITING_OWNER position', () => {
       awaiting_owner_count: 3,
       awaiting_owner_overdue: true,
       timestamp: new Date().toISOString(),
+      ideas_actionable: 0,
     }
     expect(status.awaiting_owner_count).toBe(3)
     expect(status.awaiting_owner_overdue).toBe(true)
